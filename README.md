@@ -128,6 +128,16 @@ mechanism, based on an approximate (not exact-font-metrics) line-wrap
 estimate. Table cell/row heights already auto-grow correctly on their own
 (LibreOffice handles that internally), so tables aren't affected by this.
 
+There's a second, separate wrinkle `save_deck` also works around: when
+LibreOffice exports a `.pptx`, it leaves the `wrap="square"` attribute off
+every text body's XML (`<a:bodyPr>`), relying on that being the OOXML spec
+default rather than stating it -- and that was observed, directly, not to
+be interpreted consistently: the same file rendered word-wrapped via one
+LibreOffice profile/session but showed unwrapped, overflowing text when
+freshly opened in another. `save_deck` patches every `<a:bodyPr>` in the
+saved file to state `wrap="square"` explicitly so it can't be read either
+way; this happens automatically on every `.pptx` save, nothing to opt into.
+
 See the docstring at the top of `slidebuilder/elements.py` for the full
 field list and defaults.
 

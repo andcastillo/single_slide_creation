@@ -23,6 +23,9 @@ manual edits you made in the LibreOffice window in between are preserved.
 """
 
 import os
+import re
+import tempfile
+import zipfile
 
 import uno
 from com.sun.star.beans import PropertyValue
@@ -136,6 +139,48 @@ def add_slide(
     return page
 
 
+_BODY_PR_RE = re.compile(rb"<a:bodyPr(\s[^>]*)?(/?)>")
+_SLIDE_XML_RE = re.compile(r"ppt/slides/slide\d+\.xml$")
+
+
+def _ensure_wrap_square(xml_bytes: bytes) -> bytes:
+    def add_wrap(m):
+        attrs, self_close = m.group(1) or b"", m.group(2) or b""
+        if b"wrap=" in attrs:
+            return m.group(0)
+        return b'<a:bodyPr wrap="square"' + attrs + self_close + b">"
+
+    return _BODY_PR_RE.sub(add_wrap, xml_bytes)
+
+
+def _force_pptx_text_wrap(path: str):
+    """LibreOffice's own pptx export leaves the wrap="square" attribute off
+    every <a:bodyPr> (relying on it being the OOXML spec default rather
+    than stating it), and that turns out not to be interpreted consistently
+    -- observed directly: the same file rendered word-wrapped via one
+    LibreOffice profile/session but showed unwrapped, overflowing text
+    when freshly opened in another. This patches every <a:bodyPr> in every
+    slide of the just-saved pptx to state wrap="square" explicitly, so it
+    can't be read either way.
+    """
+    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".pptx", dir=os.path.dirname(path) or ".")
+    os.close(tmp_fd)
+    try:
+        with zipfile.ZipFile(path, "r") as zin, zipfile.ZipFile(
+            tmp_path, "w", zipfile.ZIP_DEFLATED
+        ) as zout:
+            for item in zin.infolist():
+                data = zin.read(item.filename)
+                if _SLIDE_XML_RE.search(item.filename):
+                    data = _ensure_wrap_square(data)
+                zout.writestr(item, data)
+        os.replace(tmp_path, path)
+    except Exception:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        raise
+
+
 def save_deck(doc, path: str):
     """Save `doc` to `path`, choosing the export filter from its extension
     (.pptx, .ppt, or .odp)."""
@@ -152,6 +197,8 @@ def save_deck(doc, path: str):
     # this same live, already-open document instead of loading a stale
     # second copy from disk.
     doc.storeAsURL(url, (_mkprop("FilterName", filter_name), _mkprop("Overwrite", True)))
+    if ext == ".pptx":
+        _force_pptx_text_wrap(path)
 
 
 def create_or_append_slide(
