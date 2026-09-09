@@ -23,6 +23,11 @@ Shape types ("rectangle", "oval") and "text" additionally accept:
     line_color    "#RRGGBB", or None for no outline (default "#000000")
     line_width    outline width in points (default 1)
 
+Text always word-wraps within `width`, and `height` is treated as a
+minimum: if the text needs more vertical room to wrap without being cut
+off, the shape is made taller automatically (see _min_height_for_text) --
+it never shrinks below what you asked for, only grows past it if needed.
+
 "table" additionally accepts:
     rows          list of rows, each a list of cell strings, e.g.
                   [["Header 1", "Header 2"], ["a", "b"]]
@@ -101,9 +106,71 @@ def create_element(doc, page, el: dict):
     )
 
 
+def _estimate_wrapped_line_count(text: str, chars_per_line: int) -> int:
+    """Rough greedy word-wrap simulation: how many lines `text` needs if no
+    line may exceed `chars_per_line` characters. Honors explicit "\\n"
+    breaks as separate paragraphs."""
+    chars_per_line = max(chars_per_line, 1)
+    total_lines = 0
+    for paragraph in text.split("\n"):
+        words = paragraph.split()
+        if not words:
+            total_lines += 1
+            continue
+        line_len = 0
+        lines_in_paragraph = 1
+        for word in words:
+            added = len(word) if line_len == 0 else len(word) + 1  # +1 for the space
+            if line_len + added > chars_per_line:
+                lines_in_paragraph += 1
+                line_len = len(word)
+            else:
+                line_len += added
+        total_lines += lines_in_paragraph
+    return max(total_lines, 1)
+
+
+def _min_height_for_text(text: str, font_size_pt: float, width_inches: float) -> float:
+    """Approximate the height (in inches) needed to word-wrap `text` inside
+    `width_inches` at `font_size_pt`, so a shape/text box's height can be
+    auto-expanded to actually contain it.
+
+    This is a heuristic (average glyph width, not real font metrics) --
+    LibreOffice's own TextAutoGrowHeight looks like the "proper" way to get
+    this for free, but it turns out not to recompute a shape's Size when
+    driven via UNO the way this library does (set text, then save without
+    ever going through interactive layout); the stored Size -- and
+    therefore what gets exported -- stays whatever was set, and wrapped
+    text that doesn't fit is simply painted past it instead. Estimating
+    and expanding the height ourselves avoids that regardless of layout
+    timing.
+    """
+    h_padding_in = 0.15  # approx. left+right internal text margins
+    usable_width_in = max(width_inches - h_padding_in, 0.3)
+    avg_char_width_in = (font_size_pt * 0.52) / 72.0  # rough average glyph width
+    chars_per_line = max(1, int(usable_width_in / avg_char_width_in))
+    n_lines = _estimate_wrapped_line_count(text, chars_per_line)
+    line_height_in = (font_size_pt * 1.2) / 72.0
+    v_padding_in = 0.12  # approx. top+bottom internal text margins
+    return n_lines * line_height_in + v_padding_in
+
+
 def _position_and_size(shape, el):
+    width, height = el["width"], el["height"]
+    text = el.get("text")
+    if text:
+        # An ellipse's usable text width narrows away from its vertical
+        # center, unlike a rectangle's -- treat it as if it only had ~72%
+        # of its bounding width to wrap into, so the height estimate below
+        # compensates with extra room instead of undershooting.
+        wrap_width = width * 0.72 if el.get("type") == "oval" else width
+        # The given height is a minimum: grow (never shrink) so wrapped
+        # text doesn't visually spill past the shape -- see
+        # _min_height_for_text's docstring for why this can't just be left
+        # to TextAutoGrowHeight.
+        height = max(height, _min_height_for_text(text, el.get("font_size", 18), wrap_width))
     shape.Position = Point(inches(el["x"]), inches(el["y"]))
-    shape.Size = Size(inches(el["width"]), inches(el["height"]))
+    shape.Size = Size(inches(width), inches(height))
 
 
 def _apply_text_formatting(text_range_cursor, el):

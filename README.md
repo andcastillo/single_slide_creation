@@ -113,6 +113,21 @@ Every element also accepts an optional `"style": "<name>"` referencing an
 entry in a theme's `styles` (see below); explicit fields on the element
 still override whatever the style set.
 
+### Text wrapping
+
+Text in `rectangle`, `oval`, and `text` elements always word-wraps within
+the given `width`. `height` is a *minimum* -- if the wrapped text needs
+more vertical room than that to avoid being cut off, the shape is made
+taller automatically (never shorter than what you asked for). This is a
+deliberate library behavior, not LibreOffice's own "shrink/grow to fit":
+`TextAutoGrowHeight` turns out not to actually recompute a shape's stored
+size when driven via a script the way this library does (set text, save,
+without ever going through interactive layout) -- see
+`_min_height_for_text`'s docstring in `slidebuilder/elements.py` for the
+mechanism, based on an approximate (not exact-font-metrics) line-wrap
+estimate. Table cell/row heights already auto-grow correctly on their own
+(LibreOffice handles that internally), so tables aren't affected by this.
+
 See the docstring at the top of `slidebuilder/elements.py` for the full
 field list and defaults.
 
