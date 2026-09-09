@@ -2,13 +2,13 @@
 Renders individual element definitions (dicts) onto a DrawPage (an Impress
 slide) via the UNO API.
 
-Each element is a plain dict. Common keys, honored by every type:
+Each element is a plain dict:
 
     type          "rectangle" | "oval" | "line" | "text" | "table" | "image"
+
+Every type except "line" (see below) takes:
     x, y          position of the top-left corner, in inches
     width, height size, in inches
-                  (for "line": x/y/width/height describe its bounding box;
-                  it is drawn from the top-left to the bottom-right corner)
 
 Shape types ("rectangle", "oval") and "text" additionally accept:
     text          string to place inside
@@ -38,8 +38,18 @@ Shape types ("rectangle", "oval") and "text" additionally accept:
 "image" additionally accepts one of:
     path          filesystem path to an image file (png, jpg, svg, ...)
     icon          name of a predefined icon from the icons/ folder (e.g.
-                  "person", "chatbot", "computer", "cloud", "chat_icon") --
-                  see slidebuilder/icons.py and icons/README.md
+                  "person", "document", "chatbot", "computer", "cloud",
+                  "chat_icon") -- see slidebuilder/icons.py and
+                  icons/README.md
+
+"line" is a straight connector between two explicit points (e.g. from one
+shape's edge to another's) rather than x/y/width/height, and accepts:
+    x1, y1, x2, y2   start and end points, in inches
+    line_color       "#RRGGBB", or None for no line (default "#000000")
+    line_width       in points (default 1)
+    arrow_start      bool: draw an arrowhead at (x1, y1) (default False)
+    arrow_end        bool: draw an arrowhead at (x2, y2) (default False)
+    arrow_size       arrowhead length, in inches (default 0.12)
 
 Every element type also accepts an optional "style" key naming an entry in
 a theme's ["styles"] dict, whose fields become defaults for that element
@@ -69,7 +79,6 @@ _VERT_ADJUST = {"top": TVA_TOP, "middle": TVA_CENTER, "bottom": TVA_BOTTOM}
 _SHAPE_SERVICE = {
     "rectangle": "com.sun.star.drawing.RectangleShape",
     "oval": "com.sun.star.drawing.EllipseShape",
-    "line": "com.sun.star.drawing.LineShape",
 }
 
 
@@ -84,6 +93,8 @@ def create_element(doc, page, el: dict):
         return _create_table(doc, page, el)
     if el_type == "image":
         return _create_image(doc, page, el)
+    if el_type == "line":
+        return _create_line(doc, page, el)
     raise ValueError(
         f"Unknown element type {el_type!r}. Expected one of: "
         "rectangle, oval, line, text, table, image."
@@ -142,6 +153,43 @@ def _create_basic_shape(doc, page, el):
             raise ValueError(f"valign must be one of {list(_VERT_ADJUST)}, got {valign!r}")
         shape.TextVerticalAdjust = _VERT_ADJUST[valign]
         _apply_text_formatting(shape.Text.createTextCursor(), el)
+
+    return shape
+
+
+def _create_line(doc, page, el):
+    for key in ("x1", "y1", "x2", "y2"):
+        if key not in el:
+            raise ValueError(f"line element requires '{key}' (in inches)")
+
+    p1 = Point(inches(el["x1"]), inches(el["y1"]))
+    p2 = Point(inches(el["x2"]), inches(el["y2"]))
+
+    shape = doc.createInstance("com.sun.star.drawing.LineShape")
+    page.add(shape)
+    # A LineShape's Position/Size (a bounding-box rectangle) always draws
+    # from that box's top-left to its bottom-right corner, which silently
+    # flips the direction -- and therefore which end any arrowhead lands
+    # on -- for a line whose start is right-of/below its end. Setting
+    # PolyPolygon directly (the shape's actual point list) preserves the
+    # exact (x1,y1) -> (x2,y2) order we were given.
+    shape.PolyPolygon = ((p1, p2),)
+
+    line_color = el.get("line_color", "#000000")
+    if line_color:
+        shape.LineStyle = uno.Enum("com.sun.star.drawing.LineStyle", "SOLID")
+        shape.LineColor = hex_to_color(line_color)
+    else:
+        shape.LineStyle = uno.Enum("com.sun.star.drawing.LineStyle", "NONE")
+    shape.LineWidth = round(el.get("line_width", 1) * 35.28)  # pt -> 1/100mm
+
+    arrow_size = round(el.get("arrow_size", 0.12) * inches(1))
+    if el.get("arrow_end"):
+        shape.LineEndName = "Arrow"
+        shape.LineEndWidth = arrow_size
+    if el.get("arrow_start"):
+        shape.LineStartName = "Arrow"
+        shape.LineStartWidth = arrow_size
 
     return shape
 

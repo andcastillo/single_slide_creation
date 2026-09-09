@@ -3,3 +3,4 @@ __pycache__/
 .~lock.*#
 examples/output_deck.pptx
 examples/themed_output_deck.pptx
+examples/diagram_output_deck.pptx

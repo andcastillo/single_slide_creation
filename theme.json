@@ -65,6 +65,22 @@
       "fill_color": "$background",
       "header_fill_color": "$primary",
       "header_font_color": "$light"
+    },
+    "process": {
+      "font_family": "Arial",
+      "font_size": 14,
+      "bold": true,
+      "font_color": "$primary",
+      "fill_color": "$light",
+      "line_color": "$primary",
+      "line_width": 1.5,
+      "align": "center",
+      "valign": "middle"
+    },
+    "connector": {
+      "line_color": "$muted",
+      "line_width": 1.5,
+      "arrow_end": true
     }
   }
 }

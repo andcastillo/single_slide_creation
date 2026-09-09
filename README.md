@@ -54,7 +54,9 @@ element list defined in that script, and saves it. Run it again to append
 another slide to the same deck.
 
 For a version that uses named styles from `theme.json` and icons from
-`icons/`, run `examples/themed_example.py` instead.
+`icons/`, run `examples/themed_example.py` instead. For a process-flow
+diagram (icons connected with arrowed lines), see
+`examples/diagram_example.py` and the section below.
 
 ## Library usage
 
@@ -101,10 +103,11 @@ corner. Colors are `"#RRGGBB"` strings.
 
 | type        | key fields |
 |-------------|------------|
-| `rectangle`, `oval`, `line` | `x, y, width, height`, `fill_color`, `line_color`, `line_width`, and optionally `text` with `font_size`, `bold`, `italic`, `font_color`, `align`, `valign` |
+| `rectangle`, `oval` | `x, y, width, height`, `fill_color`, `line_color`, `line_width`, and optionally `text` with `font_size`, `bold`, `italic`, `font_color`, `align`, `valign` |
 | `text`      | `x, y, width, height, text`, `font_size`, `bold`, `italic`, `font_color`, `align`, `valign` |
 | `table`     | `x, y, width, height`, `rows` (list of lists of strings), `col_widths`/`row_heights` (relative weights), `header_fill_color`, `header_font_color`, `fill_color`, `font_size`, `align` |
 | `image`     | `x, y, width, height`, and either `path` to an image file or `icon` naming a predefined icon (see below) |
+| `line`      | `x1, y1, x2, y2` (endpoints, not x/y/width/height), `line_color`, `line_width`, `arrow_start`/`arrow_end` (bool), `arrow_size` -- see below |
 
 Every element also accepts an optional `"style": "<name>"` referencing an
 entry in a theme's `styles` (see below); explicit fields on the element
@@ -117,17 +120,44 @@ field list and defaults.
 
 `{"type": "image", "icon": "person", ...}` looks up `icons/person.svg` (or
 `.png`/`.jpg`) instead of needing a literal `path`. Currently included:
-`person`, `computer`, `cloud`, `chat_icon`, `chatbot` -- generic flat-style
-placeholders. To use your own set (e.g. official Cisco icons), just drop
-files with the matching names into `icons/`; nothing in code needs to
-change. See `icons/README.md`.
+`person`, `document`, `computer`, `cloud`, `chat_icon`, `chatbot` -- generic
+flat-style placeholders. To use your own set (e.g. official Cisco icons),
+just drop files with the matching names into `icons/`; nothing in code
+needs to change. See `icons/README.md`.
+
+## Process-flow diagrams (connector lines)
+
+`examples/diagram_example.py` builds this -- two input documents feeding a
+process step that produces one output document, drawn with `line` elements:
+
+```python
+{"type": "line", "style": "connector",
+ "x1": 1.8, "y1": 2.1, "x2": 3.6, "y2": 3.75}
+```
+
+A `line` is defined by its two endpoints (`x1, y1` to `x2, y2`), typically
+one shape's edge to another's, rather than `x, y, width, height` -- and
+unlike the other element types, direction matters: `arrow_end: true` draws
+an arrowhead at `(x2, y2)`, `arrow_start: true` at `(x1, y1)`. The included
+`"connector"` style in `theme.json` sets a consistent line color/width and
+`arrow_end: true`, so most diagram lines only need to state their
+endpoints.
+
+(Implementation note: a UNO `LineShape` normally always draws from its
+bounding box's top-left corner to its bottom-right corner regardless of
+which endpoint you call "start" -- which would put the arrowhead on the
+wrong end for a line going up-and-left or down-and-left. `_create_line` in
+`slidebuilder/elements.py` sets the shape's `PolyPolygon` (its actual point
+list) directly instead, so `(x1,y1) -> (x2,y2)` order -- and therefore
+arrow placement -- is always preserved.)
 
 ## Style / theme definitions (`theme.json`)
 
 `theme.json` is the "brand compliance" file: a plain JSON config (not CSS --
 see *Why JSON, not CSS* below) with a shared color palette and named style
-presets (`title`, `subtitle`, `body`, `caption`, `callout`, `table`, ...),
-each bundling font family/size/weight/color/alignment defaults. Elements
+presets (`title`, `subtitle`, `body`, `caption`, `callout`, `table`,
+`process`, `connector`, ...), each bundling font family/size/weight/color/
+alignment (or, for `connector`, line) defaults. Elements
 opt in with `"style": "<name>"`:
 
 ```python
@@ -168,6 +198,8 @@ and the file stays plain data any teammate can read or edit by hand.
 - `examples/basic_example.py` -- runnable demo covering every element type.
 - `examples/themed_example.py` -- same, but using `theme.json` styles and
   `icons/` icons.
+- `examples/diagram_example.py` -- process-flow diagram with arrowed
+  connector lines between icons and a process box.
 - `slidebuilder/connection.py` -- connect to (or launch) a LibreOffice
   instance over its UNO socket.
 - `slidebuilder/builder.py` -- open/create a deck, append a slide, save.
