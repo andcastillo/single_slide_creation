@@ -53,6 +53,9 @@ This creates (or reuses) `examples/output_deck.pptx`, adds a slide from the
 element list defined in that script, and saves it. Run it again to append
 another slide to the same deck.
 
+For a version that uses named styles from `theme.json` and icons from
+`icons/`, run `examples/themed_example.py` instead.
+
 ## Library usage
 
 ```python
@@ -101,28 +104,90 @@ corner. Colors are `"#RRGGBB"` strings.
 | `rectangle`, `oval`, `line` | `x, y, width, height`, `fill_color`, `line_color`, `line_width`, and optionally `text` with `font_size`, `bold`, `italic`, `font_color`, `align`, `valign` |
 | `text`      | `x, y, width, height, text`, `font_size`, `bold`, `italic`, `font_color`, `align`, `valign` |
 | `table`     | `x, y, width, height`, `rows` (list of lists of strings), `col_widths`/`row_heights` (relative weights), `header_fill_color`, `header_font_color`, `fill_color`, `font_size`, `align` |
-| `image`     | `x, y, width, height`, `path` to an image file -- also how predefined icons work: point `path` at an icon image |
+| `image`     | `x, y, width, height`, and either `path` to an image file or `icon` naming a predefined icon (see below) |
+
+Every element also accepts an optional `"style": "<name>"` referencing an
+entry in a theme's `styles` (see below); explicit fields on the element
+still override whatever the style set.
 
 See the docstring at the top of `slidebuilder/elements.py` for the full
 field list and defaults.
 
+## Predefined icons (`icons/`)
+
+`{"type": "image", "icon": "person", ...}` looks up `icons/person.svg` (or
+`.png`/`.jpg`) instead of needing a literal `path`. Currently included:
+`person`, `computer`, `cloud`, `chat_icon`, `chatbot` -- generic flat-style
+placeholders. To use your own set (e.g. official Cisco icons), just drop
+files with the matching names into `icons/`; nothing in code needs to
+change. See `icons/README.md`.
+
+## Style / theme definitions (`theme.json`)
+
+`theme.json` is the "brand compliance" file: a plain JSON config (not CSS --
+see *Why JSON, not CSS* below) with a shared color palette and named style
+presets (`title`, `subtitle`, `body`, `caption`, `callout`, `table`, ...),
+each bundling font family/size/weight/color/alignment defaults. Elements
+opt in with `"style": "<name>"`:
+
+```python
+from slidebuilder import load_theme
+
+theme = load_theme("theme.json")
+elements = [
+    {"type": "rectangle", "style": "title",
+     "x": 0.5, "y": 0.4, "width": 12.33, "height": 1.0,
+     "text": "Platform Overview"},   # position/text always given per-element
+]
+doc, page = create_or_append_slide(desktop, "deck.pptx", elements, theme=theme)
+```
+
+A style's fields are just defaults -- any field the element sets itself
+wins, so you can reuse a style and still tweak one slide's instance. Colors
+written as `"$name"` (e.g. `"font_color": "$primary"`) resolve against
+`theme["colors"]["name"]`, so every styled element stays in sync if you
+change the palette in one place.
+
+**The color hex codes and font name in `theme.json` are unverified
+placeholders** -- replace them with your actual approved Cisco brand values
+before using this for real decks.
+
+### Why JSON, not CSS
+
+A real stylesheet needs selectors and cascade rules to decide which of many
+possibly-matching rules wins for a given element; here there's no DOM to
+select against, only a flat list of element dicts you write yourself. So a
+style is really just a named, reusable default -- `theme["styles"]["title"]`
+is a partial element dict merged underneath the element you already wrote,
+with the element's own fields winning. That's the entire mechanism
+(`slidebuilder/theme.py`, ~30 lines): no selector/cascade engine to write,
+and the file stays plain data any teammate can read or edit by hand.
+
 ## Layout
 
 - `examples/basic_example.py` -- runnable demo covering every element type.
+- `examples/themed_example.py` -- same, but using `theme.json` styles and
+  `icons/` icons.
 - `slidebuilder/connection.py` -- connect to (or launch) a LibreOffice
   instance over its UNO socket.
 - `slidebuilder/builder.py` -- open/create a deck, append a slide, save.
 - `slidebuilder/elements.py` -- turns one element dict into a UNO shape on
   the slide.
+- `slidebuilder/theme.py` -- loads `theme.json` and merges named styles /
+  resolves `"$color"` tokens into an element dict.
+- `slidebuilder/icons.py` -- resolves an icon name to a file in `icons/`.
 - `slidebuilder/units.py` -- inches/cm to the API's native 1/100 mm units,
   and hex color parsing.
+- `icons/` -- predefined icon image files, looked up by name.
+- `theme.json` -- the style/brand definition (colors, fonts, named presets).
 
 ## Notes / current limitations
 
-- Icons are just images (`type: "image"`); there's no bundled icon set yet.
-  Point `path` at whatever icon files you have.
 - `save_deck` picks the export filter from the file extension: `.pptx`,
   `.ppt`, or `.odp`.
 - `connection.launch()` exists for starting LibreOffice from Python too, but
   the interactive workflow above (starting it yourself once, in a terminal)
   is the intended way to work with it.
+- Icons/theme are plain files with no validation tooling yet (e.g. nothing
+  checks a theme.json against a schema) -- a typo in a style or color name
+  surfaces as a clear `KeyError`/`FileNotFoundError` at slide-build time.

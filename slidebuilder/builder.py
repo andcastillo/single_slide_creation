@@ -28,6 +28,7 @@ import uno
 from com.sun.star.beans import PropertyValue
 
 from .elements import create_element
+from .theme import apply_theme, load_theme
 
 BLANK_LAYOUT = 20  # com.sun.star.presentation.DrawPage Layout: no placeholders
 
@@ -90,14 +91,29 @@ def open_deck(desktop, path: str | None):
     return doc, True
 
 
-def add_slide(doc, elements: list[dict], is_new: bool = False, index: int | None = None):
+def add_slide(
+    doc,
+    elements: list[dict],
+    is_new: bool = False,
+    index: int | None = None,
+    theme: dict | str | None = None,
+):
     """Append a slide built from `elements` to `doc` and return the new page.
 
     If is_new is True (freshly created presentation), the existing default
     blank page is reused instead of inserting an extra one after it.
     If `index` is given, the slide is inserted at that position instead of
     the end.
+
+    `theme` (a dict from theme.load_theme(), or a path string to a theme
+    JSON file) is optional. When given, each element's "style" field (if
+    present) is resolved against theme["styles"] and "$color" tokens are
+    resolved against theme["colors"] before the element is created -- see
+    slidebuilder/theme.py.
     """
+    if isinstance(theme, str):
+        theme = load_theme(theme)
+
     pages = doc.DrawPages
 
     if is_new and pages.Count == 1:
@@ -113,6 +129,8 @@ def add_slide(doc, elements: list[dict], is_new: bool = False, index: int | None
     page.Layout = BLANK_LAYOUT
 
     for el in elements:
+        if theme is not None:
+            el = apply_theme(theme, el)
         create_element(doc, page, el)
 
     return page
@@ -136,14 +154,21 @@ def save_deck(doc, path: str):
     doc.storeAsURL(url, (_mkprop("FilterName", filter_name), _mkprop("Overwrite", True)))
 
 
-def create_or_append_slide(desktop, path: str, elements: list[dict], index: int | None = None):
+def create_or_append_slide(
+    desktop,
+    path: str,
+    elements: list[dict],
+    index: int | None = None,
+    theme: dict | str | None = None,
+):
     """Convenience one-shot wrapper: open (or create) the deck at `path`,
-    append a slide built from `elements`, save, and return (doc, page).
+    append a slide built from `elements` (optionally styled via `theme`),
+    save, and return (doc, page).
 
     The document is left open in the LibreOffice window (not closed) so you
     can keep inspecting/editing it, or call this again to add more slides.
     """
     doc, is_new = open_deck(desktop, path)
-    page = add_slide(doc, elements, is_new=is_new, index=index)
+    page = add_slide(doc, elements, is_new=is_new, index=index, theme=theme)
     save_deck(doc, path)
     return doc, page

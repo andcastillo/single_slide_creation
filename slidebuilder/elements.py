@@ -12,6 +12,7 @@ Each element is a plain dict. Common keys, honored by every type:
 
 Shape types ("rectangle", "oval") and "text" additionally accept:
     text          string to place inside
+    font_family   font name, e.g. "Arial" (default: LibreOffice's default)
     font_size     points (default 18)
     bold          bool (default False)
     italic        bool (default False)
@@ -25,7 +26,7 @@ Shape types ("rectangle", "oval") and "text" additionally accept:
 "table" additionally accepts:
     rows          list of rows, each a list of cell strings, e.g.
                   [["Header 1", "Header 2"], ["a", "b"]]
-    font_size, font_color, align, valign   same meaning, applied to every cell
+    font_family, font_size, font_color, align, valign   same meaning, applied to every cell
     header_fill_color   fill color for the first row (default None)
     header_font_color   text color for the first row (default: font_color)
     fill_color          fill color for all other rows (default None)
@@ -34,10 +35,17 @@ Shape types ("rectangle", "oval") and "text" additionally accept:
     row_heights         optional list of relative row heights; defaults to
                         equal-height rows
 
-"image" additionally accepts:
+"image" additionally accepts one of:
     path          filesystem path to an image file (png, jpg, svg, ...)
-                  Predefined icons are just images -- point `path` at an
-                  icon file to place it like any other picture.
+    icon          name of a predefined icon from the icons/ folder (e.g.
+                  "person", "chatbot", "computer", "cloud", "chat_icon") --
+                  see slidebuilder/icons.py and icons/README.md
+
+Every element type also accepts an optional "style" key naming an entry in
+a theme's ["styles"] dict, whose fields become defaults for that element
+(explicit fields on the element still win). See slidebuilder/theme.py. This
+only has an effect when elements are created via add_slide(..., theme=...);
+create_element() itself just renders whatever plain-dict fields it's given.
 """
 
 import os
@@ -52,6 +60,7 @@ from com.sun.star.drawing.TextVerticalAdjust import (
 )
 
 from .units import inches, hex_to_color
+from .icons import resolve_icon
 
 _HORIZ_ADJUST = {"left": "LEFT", "center": "CENTER", "right": "RIGHT"}
 _PARA_ADJUST = {"left": PA_LEFT, "center": PA_CENTER, "right": PA_RIGHT}
@@ -90,6 +99,8 @@ def _apply_text_formatting(text_range_cursor, el):
     cursor = text_range_cursor
     cursor.gotoStart(False)
     cursor.gotoEnd(True)
+    if el.get("font_family"):
+        cursor.CharFontName = el["font_family"]
     cursor.CharHeight = el.get("font_size", 18)
     cursor.CharWeight = 150.0 if el.get("bold") else 100.0
     cursor.CharPosture = uno.Enum(
@@ -215,6 +226,8 @@ def _create_table(doc, page, el):
             cursor = cell.Text.createTextCursor()
             cursor.gotoStart(False)
             cursor.gotoEnd(True)
+            if el.get("font_family"):
+                cursor.CharFontName = el["font_family"]
             cursor.CharHeight = el.get("font_size", 14)
             cursor.CharWeight = 150.0 if (r == 0 or el.get("bold")) else 100.0
             font_color = header_font_color if r == 0 else el.get("font_color", "#000000")
@@ -228,9 +241,10 @@ def _create_table(doc, page, el):
 
 
 def _create_image(doc, page, el):
-    path = el.get("path")
+    icon_name = el.get("icon")
+    path = resolve_icon(icon_name, el.get("icons_dir")) if icon_name else el.get("path")
     if not path:
-        raise ValueError("image element requires a 'path'")
+        raise ValueError("image element requires either 'icon' or 'path'")
     if not os.path.isfile(path):
         raise FileNotFoundError(f"image not found: {path}")
 

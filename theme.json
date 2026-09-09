@@ -1,0 +1,70 @@
+{
+  "_comment": "Style/brand definition for slidebuilder. The color hex codes and font name below are UNVERIFIED PLACEHOLDERS -- replace them with your actual approved Cisco brand values before using this for real decks. Everything under 'styles' is a named preset: reference it from an element with \"style\": \"<name>\"; any field can still be overridden per-element. Values written as \"$name\" resolve against 'colors'.",
+
+  "colors": {
+    "primary": "#1F4E79",
+    "secondary": "#70AD47",
+    "accent": "#FF8200",
+    "dark": "#000000",
+    "light": "#FFFFFF",
+    "muted": "#666666",
+    "background": "#FFFFFF",
+    "palette": ["#1F4E79", "#0D274D", "#70AD47", "#FF8200", "#A9A9A9"]
+  },
+
+  "styles": {
+    "title": {
+      "font_family": "Arial",
+      "font_size": 32,
+      "bold": true,
+      "font_color": "$light",
+      "fill_color": "$primary",
+      "line_color": null,
+      "align": "center",
+      "valign": "middle"
+    },
+    "subtitle": {
+      "font_family": "Arial",
+      "font_size": 20,
+      "bold": true,
+      "font_color": "$primary",
+      "align": "left",
+      "valign": "top"
+    },
+    "body": {
+      "font_family": "Arial",
+      "font_size": 14,
+      "bold": false,
+      "font_color": "$dark",
+      "align": "left",
+      "valign": "top"
+    },
+    "caption": {
+      "font_family": "Arial",
+      "font_size": 10,
+      "italic": true,
+      "font_color": "$muted",
+      "align": "left",
+      "valign": "top"
+    },
+    "callout": {
+      "font_family": "Arial",
+      "font_size": 16,
+      "bold": true,
+      "font_color": "$light",
+      "fill_color": "$secondary",
+      "line_color": "$secondary",
+      "align": "center",
+      "valign": "middle"
+    },
+    "table": {
+      "font_family": "Arial",
+      "font_size": 12,
+      "font_color": "$dark",
+      "align": "left",
+      "fill_color": "$background",
+      "header_fill_color": "$primary",
+      "header_font_color": "$light"
+    }
+  }
+}
