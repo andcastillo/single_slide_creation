@@ -67,6 +67,7 @@ import os
 
 import uno
 from com.sun.star.awt import Point, Size
+from com.sun.star.beans import PropertyValue
 from com.sun.star.style.ParagraphAdjust import LEFT as PA_LEFT, CENTER as PA_CENTER, RIGHT as PA_RIGHT
 from com.sun.star.drawing.TextVerticalAdjust import (
     TOP as TVA_TOP,
@@ -77,13 +78,24 @@ from com.sun.star.drawing.TextVerticalAdjust import (
 from .units import inches, hex_to_color
 from .icons import resolve_icon
 
+
+def _mkprop(name, value):
+    p = PropertyValue()
+    p.Name = name
+    p.Value = value
+    return p
+
 _HORIZ_ADJUST = {"left": "LEFT", "center": "CENTER", "right": "RIGHT"}
 _PARA_ADJUST = {"left": PA_LEFT, "center": PA_CENTER, "right": PA_RIGHT}
 _VERT_ADJUST = {"top": TVA_TOP, "middle": TVA_CENTER, "bottom": TVA_BOTTOM}
 
 _SHAPE_SERVICE = {
-    "rectangle": "com.sun.star.drawing.RectangleShape",
-    "oval": "com.sun.star.drawing.EllipseShape",
+    "rectangle": "com.sun.star.drawing.CustomShape",
+    "oval": "com.sun.star.drawing.CustomShape",
+}
+_CUSTOM_SHAPE_PRESET = {
+    "rectangle": "rectangle",
+    "oval": "ellipse",
 }
 
 
@@ -192,8 +204,32 @@ def _apply_text_formatting(text_range_cursor, el):
 
 
 def _create_basic_shape(doc, page, el):
+    # com.sun.star.drawing.CustomShape (a preset-geometry shape), not the
+    # older/simpler RectangleShape/EllipseShape services -- those are what
+    # Impress's own "Insert Shape" toolbar actually creates, and it turns
+    # out to matter beyond geometry: a RectangleShape/EllipseShape doesn't
+    # hook into LibreOffice's live text-layout engine the same way, so text
+    # typed into one interactively (after this library created it) doesn't
+    # wrap/grow the way it does in a shape drawn by hand -- confirmed live
+    # (a RectangleShape's Size never changes after setString(), even with
+    # TextAutoGrowHeight on, while a CustomShape's does, immediately).
+    # Using CustomShape makes a scripted shape behave identically to a
+    # hand-drawn one for any later interactive editing, not just at
+    # creation time.
     shape = doc.createInstance(_SHAPE_SERVICE[el["type"]])
     page.add(shape)
+    shape.CustomShapeGeometry = (
+        _mkprop("Type", _CUSTOM_SHAPE_PRESET[el["type"]]),
+    )
+    # CustomShape's own default (True) auto-*shrinks* the box to hug
+    # whatever text it holds, same as a hand-drawn shape would -- fine
+    # generally, but wrong for a shape another element (e.g. a connector
+    # line, sized from this one's requested width/height) needs to line up
+    # with, since the box actually settles smaller than what was asked
+    # for. Off here so the size this library computes (see
+    # _position_and_size/_min_height_for_text: still grows to fit wrapped
+    # text, just never shrinks below what was requested) is what's kept.
+    shape.TextAutoGrowHeight = False
     _position_and_size(shape, el)
 
     fill_color = el.get("fill_color")

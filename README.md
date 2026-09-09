@@ -118,15 +118,25 @@ still override whatever the style set.
 Text in `rectangle`, `oval`, and `text` elements always word-wraps within
 the given `width`. `height` is a *minimum* -- if the wrapped text needs
 more vertical room than that to avoid being cut off, the shape is made
-taller automatically (never shorter than what you asked for). This is a
-deliberate library behavior, not LibreOffice's own "shrink/grow to fit":
-`TextAutoGrowHeight` turns out not to actually recompute a shape's stored
-size when driven via a script the way this library does (set text, save,
-without ever going through interactive layout) -- see
-`_min_height_for_text`'s docstring in `slidebuilder/elements.py` for the
-mechanism, based on an approximate (not exact-font-metrics) line-wrap
-estimate. Table cell/row heights already auto-grow correctly on their own
-(LibreOffice handles that internally), so tables aren't affected by this.
+taller automatically (never shorter than what you asked for), using an
+approximate (not exact-font-metrics) line-wrap estimate -- see
+`_min_height_for_text`'s docstring in `slidebuilder/elements.py`. Table
+cell/row heights already auto-grow correctly on their own (LibreOffice
+handles that internally), so tables aren't affected by this.
+
+`rectangle`/`oval` are built as a `com.sun.star.drawing.CustomShape`
+(the same underlying shape type Impress's own toolbar creates), not the
+simpler `RectangleShape`/`EllipseShape` services, which turned out to
+matter for more than geometry: a shape built with those legacy services
+doesn't hook into LibreOffice's live text-layout engine the same way, so
+typing new text into one by hand afterward (in the LibreOffice window)
+just doesn't wrap -- confirmed directly (its Size never changed after a
+scripted `setString()` either, even with `TextAutoGrowHeight` on, while a
+`CustomShape`'s does, immediately). `CustomShape`'s own default also
+auto-*shrinks* the box to hug short text, same as a hand-drawn shape --
+turned off here (`TextAutoGrowHeight = False`) so a shape's size stays
+exactly what this library computed, which matters whenever something else
+(e.g. a connector `line`) is positioned relative to it.
 
 There's a second, separate wrinkle `save_deck` also works around: when
 LibreOffice exports a `.pptx`, it leaves the `wrap="square"` attribute off
