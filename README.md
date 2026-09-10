@@ -28,6 +28,31 @@ path. On this machine that's `/usr/bin/python3`:
 /usr/bin/python3 -c "import uno"   # should succeed with no output
 ```
 
+No `pip install` needed -- everything here (including `generate_slide.py`
+and `slidebuilder/llm.py`) uses only `uno` plus the standard library.
+
+### macOS setup
+
+LibreOffice on macOS bundles its own Python interpreter (with `uno`
+built in) separately from the system/Homebrew one -- there's no Fedora-style
+system-wide `uno.py` to find. Use that bundled interpreter for everything:
+
+```bash
+# Install LibreOffice if you haven't: https://www.libreoffice.org/download/
+# or: brew install --cask libreoffice
+
+/Applications/LibreOffice.app/Contents/MacOS/python -c "import uno"   # should succeed
+```
+
+If that path doesn't exist on your version (it's moved between LibreOffice
+releases before), look for `python` or `python3` under
+`/Applications/LibreOffice.app/Contents/` -- `Contents/Resources/` is the
+other place it's historically lived. Once found, use that interpreter (and
+`Contents/MacOS/soffice` for the `soffice` binary below) everywhere this
+README says `/usr/bin/python3` or `soffice`. Because the whole pipeline is
+dependency-free, there's nothing to `pip install` into it regardless of
+whether that bundled interpreter even has pip.
+
 ### 1. Start LibreOffice, listening for UNO connections
 
 Use a dedicated `-env:UserInstallation` profile so this doesn't collide with

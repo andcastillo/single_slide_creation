@@ -3,12 +3,19 @@ Talks to a local LLM served over an OpenAI-compatible chat completions API
 (LM Studio's built-in server: `lms server start`, listening on
 http://localhost:1234/v1 by default) and turns its response into a
 validated list of slidebuilder element dicts.
+
+Uses only the standard library (urllib), not `requests` -- deliberately, so
+this works from whatever Python interpreter can `import uno` (see
+connection.py) without needing to get a third-party package installed into
+it too. That matters most on macOS, where LibreOffice's bundled
+interpreter (unlike Fedora's system Python, which is what this repo was
+built against) has no pip/site-packages of its own to install into.
 """
 
 import json
 import re
-
-import requests
+import urllib.error
+import urllib.request
 
 DEFAULT_BASE_URL = "http://localhost:1234/v1"
 DEFAULT_MODEL = "qwen/qwen3.5-9b"
@@ -43,25 +50,36 @@ def call_local_llm(
     (that reasoning, when present, is a separate `reasoning_content` field
     on OpenAI-compatible responses -- not part of the returned text here).
     """
-    resp = requests.post(
+    payload = json.dumps({
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": temperature,
+        **({"max_tokens": max_tokens} if max_tokens else {}),
+    }).encode("utf-8")
+    req = urllib.request.Request(
         f"{base_url}/chat/completions",
-        json={
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            "temperature": temperature,
-            **({"max_tokens": max_tokens} if max_tokens else {}),
-        },
-        timeout=timeout,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
     )
-    if resp.status_code != 200:
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            body = resp.read()
+    except urllib.error.HTTPError as e:
         raise ConnectionError(
-            f"Local LLM server at {base_url} returned HTTP {resp.status_code}: {resp.text[:500]}\n"
+            f"Local LLM server at {base_url} returned HTTP {e.code}: {e.read()[:500]!r}\n"
             f"Is it running? Start it with: lms server start, and load a model with: lms load <name>"
-        )
-    data = resp.json()
+        ) from e
+    except urllib.error.URLError as e:
+        raise ConnectionError(
+            f"Could not reach local LLM server at {base_url}: {e.reason}\n"
+            f"Is it running? Start it with: lms server start, and load a model with: lms load <name>"
+        ) from e
+
+    data = json.loads(body)
     try:
         choice = data["choices"][0]
         content = choice["message"]["content"]
