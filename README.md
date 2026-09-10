@@ -228,6 +228,82 @@ with the element's own fields winning. That's the entire mechanism
 (`slidebuilder/theme.py`, ~30 lines): no selector/cascade engine to write,
 and the file stays plain data any teammate can read or edit by hand.
 
+## Natural-language slides (`generate_slide.py`)
+
+Describe a slide in plain English in a text file, and have a local LLM
+turn that into an element list, which then gets built the same way as
+everything above. This is a first pass at that pipeline -- one slide per
+run, no retry loop yet if the model's output doesn't validate.
+
+### Setup
+
+Uses [LM Studio](https://lmstudio.ai)'s local server (an OpenAI-compatible
+`/v1/chat/completions` API), not any cloud service:
+
+```bash
+lms server start
+lms load qwen/qwen3.5-9b --context-length 16384
+```
+
+The `--context-length 16384` matters: the system prompt (schema + theme +
+icons, built fresh each run) is already close to 2000 tokens on its own,
+and a reasoning-capable local model like this one can easily spend another
+1000+ tokens on hidden chain-of-thought before it ever writes the answer --
+the default 4096 context isn't enough headroom for both. On CPU-only
+hardware (no GPU), expect a single slide to take **several minutes** to
+generate; this is inherent to running an LLM locally without GPU
+acceleration, not something the script controls.
+
+### Usage
+
+```bash
+# examples/sample_instructions.txt is a plain-text description, e.g.:
+#   Create a slide titled "Team Status Update". Below the title on the
+#   left, add a table with columns "Task"/"Status" listing... On the
+#   right, add a green circular callout with the text "On Track".
+
+/usr/bin/python3 generate_slide.py examples/sample_instructions.txt
+```
+
+This builds the system prompt (see below), sends it plus your instructions
+to the model, validates the JSON it returns against the element schema,
+and -- if that passes -- adds the slide to `examples/generated_deck.pptx`
+(or `--deck <path>`) in the LibreOffice session already running, exactly
+like `create_or_append_slide()` elsewhere in this README.
+
+Useful flags: `--dry-run` prints the generated elements as JSON without
+touching LibreOffice (good for checking the model's output, or for
+iterating without needing LibreOffice open at all); `--show-prompt` prints
+the assembled system prompt and exits, without calling the LLM at all
+(good for checking what the model is actually being told, or for pasting
+into a different chat UI to test another model by hand); `--model`,
+`--base-url`, `--max-tokens`, `--timeout` tune the LLM call itself -- see
+`generate_slide.py --help`.
+
+### How the prompt is built
+
+`slidebuilder/prompt.py`'s `build_system_prompt()` assembles the prompt
+from two things kept in sync with the actual library, not hand-copied text
+that can drift out of date:
+
+- the **style names, their fields, and the color palette** -- read live
+  from `theme.json` every run, so a style or color you add there shows up
+  in the very next prompt with no code change;
+  the **icon list** -- read live from whatever files are in `icons/`, same
+  reasoning: add an icon file, it's usable by the model immediately.
+- the **element-type schema** (rectangle/oval/line/text/table/image and
+  their fields) is hand-written prose in `prompt.py`, not extracted from
+  `elements.py`'s docstring -- schema fields change rarely, and writing it
+  directly for an LLM to read (with the "line uses endpoints, not a
+  bounding box" gotcha called out explicitly, for instance) works better
+  than dumping a docstring meant for a human reading source code. If you
+  add/change a field in `slidebuilder/elements.py`, update this text too.
+
+If the model's response can't be parsed as JSON, or the parsed elements
+fail schema validation (missing required fields, unknown `type`, wrong
+value types, ...), `generate_slide.py` prints exactly what's wrong and the
+raw output, and exits without touching LibreOffice or the deck file.
+
 ## Layout
 
 - `examples/basic_example.py` -- runnable demo covering every element type.
@@ -235,6 +311,14 @@ and the file stays plain data any teammate can read or edit by hand.
   `icons/` icons.
 - `examples/diagram_example.py` -- process-flow diagram with arrowed
   connector lines between icons and a process box.
+- `examples/sample_instructions.txt` -- example natural-language slide
+  description for `generate_slide.py`.
+- `generate_slide.py` -- CLI: instructions file -> local LLM -> validated
+  elements -> slide in the running LibreOffice session.
+- `slidebuilder/prompt.py` -- builds the system prompt for
+  `generate_slide.py` from the schema, `theme.json`, and `icons/`.
+- `slidebuilder/llm.py` -- talks to the local LLM's OpenAI-compatible API,
+  parses/validates its response.
 - `slidebuilder/connection.py` -- connect to (or launch) a LibreOffice
   instance over its UNO socket.
 - `slidebuilder/builder.py` -- open/create a deck, append a slide, save.

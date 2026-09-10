@@ -1,0 +1,7 @@
+# slidebuilder/elements.py, builder.py, connection.py, theme.py, icons.py,
+# units.py use only `uno` (LibreOffice's own Python bindings -- not
+# installable via pip; use the system interpreter that already has it, see
+# README.md's Setup section) and the standard library.
+#
+# generate_slide.py and slidebuilder/llm.py additionally need:
+requests
