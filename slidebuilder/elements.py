@@ -4,13 +4,13 @@ slide) via the UNO API.
 
 Each element is a plain dict:
 
-    type          "rectangle" | "oval" | "line" | "text" | "table" | "image"
+    type          "rectangle" | "oval" | "shape" | "line" | "text" | "table" | "image"
 
 Every type except "line" (see below) takes:
     x, y          position of the top-left corner, in inches
     width, height size, in inches
 
-Shape types ("rectangle", "oval") and "text" additionally accept:
+Shape types ("rectangle", "oval", "shape") and "text" additionally accept:
     text          string to place inside
     font_family   font name, e.g. "Arial" (default: LibreOffice's default)
     font_size     points (default 18)
@@ -39,6 +39,16 @@ it never shrinks below what you asked for, only grows past it if needed.
                          defaults to equal-width columns
     row_heights         optional list of relative row heights; defaults to
                         equal-height rows
+
+"shape" is any preset shape beyond a plain rectangle/oval (a star, an
+arrow, a diamond, ...) and additionally requires:
+    preset        one of the names in _VALID_SHAPE_PRESETS (e.g. "star5",
+                  "heart", "right-arrow", "diamond") -- see that dict for
+                  the full list with descriptions. Only names individually
+                  confirmed to render correctly are in it; LibreOffice
+                  doesn't error on an unrecognized preset name, it just
+                  silently renders a plain rectangle instead, so this is
+                  deliberately not an open-ended field.
 
 "image" additionally accepts one of:
     path          filesystem path to an image file (png, jpg, svg, ...)
@@ -92,10 +102,51 @@ _VERT_ADJUST = {"top": TVA_TOP, "middle": TVA_CENTER, "bottom": TVA_BOTTOM}
 _SHAPE_SERVICE = {
     "rectangle": "com.sun.star.drawing.CustomShape",
     "oval": "com.sun.star.drawing.CustomShape",
+    "shape": "com.sun.star.drawing.CustomShape",
 }
 _CUSTOM_SHAPE_PRESET = {
     "rectangle": "rectangle",
     "oval": "ellipse",
+}
+
+# Preset names for the "shape" element type -- LibreOffice's CustomShape
+# engine takes a bare preset-name string (no Path/Equations/ViewBox needed)
+# for many more shapes than just rectangle/ellipse, but NOT for every name
+# that sounds plausible: an unrecognized one doesn't error, it silently
+# becomes a plain rectangle -- confirmed directly (star6/star10/star12/
+# star16/star32, bare "triangle", "flowchart-process", and bare "cloud" all
+# do this). This list is only names individually confirmed correct by
+# rendering and visually inspecting the result -- don't add to it without
+# doing the same; a name "should" work by analogy to OOXML's prstGeom list,
+# but plenty of those aren't actually wired up to LibreOffice's own preset
+# table. Values are a short description, used in the LLM prompt.
+_VALID_SHAPE_PRESETS = {
+    "star5": "a 5-pointed star",
+    "star8": "an 8-pointed star/starburst",
+    "star24": "a 24-pointed sparkle/starburst",
+    "diamond": "a diamond/rhombus",
+    "pentagon": "a 5-sided polygon",
+    "hexagon": "a 6-sided polygon",
+    "octagon": "an 8-sided polygon",
+    "heart": "a heart",
+    "cross": "a plus/cross",
+    "smiley": "a smiley face",
+    "isosceles-triangle": "a triangle (point up)",
+    "right-triangle": "a right triangle",
+    "trapezoid": "a trapezoid",
+    "parallelogram": "a parallelogram",
+    "right-arrow": "a block arrow pointing right",
+    "left-arrow": "a block arrow pointing left",
+    "up-arrow": "a block arrow pointing up",
+    "down-arrow": "a block arrow pointing down",
+    "quad-arrow": "a 4-way (cross-shaped) block arrow",
+    "left-right-arrow": "a double-headed horizontal block arrow",
+    "up-down-arrow": "a double-headed vertical block arrow",
+    "ring": "a ring/donut (circle with a circular hole)",
+    "chevron": "a chevron/arrow-tag shape",
+    "block-arc": "a thick partial-ring arc",
+    "cloud-callout": "a cloud-shaped speech bubble",
+    "flowchart-decision": "a flowchart decision diamond",
 }
 
 
@@ -114,7 +165,7 @@ def create_element(doc, page, el: dict):
         return _create_line(doc, page, el)
     raise ValueError(
         f"Unknown element type {el_type!r}. Expected one of: "
-        "rectangle, oval, line, text, table, image."
+        "rectangle, oval, shape, line, text, table, image."
     )
 
 
@@ -216,11 +267,18 @@ def _create_basic_shape(doc, page, el):
     # Using CustomShape makes a scripted shape behave identically to a
     # hand-drawn one for any later interactive editing, not just at
     # creation time.
+    if el["type"] == "shape":
+        preset = el.get("preset")
+        if preset not in _VALID_SHAPE_PRESETS:
+            raise ValueError(
+                f"shape element requires a 'preset' from {sorted(_VALID_SHAPE_PRESETS)}, got {preset!r}"
+            )
+    else:
+        preset = _CUSTOM_SHAPE_PRESET[el["type"]]
+
     shape = doc.createInstance(_SHAPE_SERVICE[el["type"]])
     page.add(shape)
-    shape.CustomShapeGeometry = (
-        _mkprop("Type", _CUSTOM_SHAPE_PRESET[el["type"]]),
-    )
+    shape.CustomShapeGeometry = (_mkprop("Type", preset),)
     # CustomShape's own default (True) auto-*shrinks* the box to hug
     # whatever text it holds, same as a hand-drawn shape would -- fine
     # generally, but wrong for a shape another element (e.g. a connector

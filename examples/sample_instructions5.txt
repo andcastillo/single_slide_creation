@@ -1,0 +1,6 @@
+Create a slide titled "Team Status Update".
+
+On the left, add a table with two columns, "Task" and "Status", listing:
+"API Integration" is "Done", "UI Redesign" is "In Progress".
+
+On the right side of the slide, add an orange star with the text "On Track".

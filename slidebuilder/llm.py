@@ -23,15 +23,17 @@ import re
 import urllib.error
 import urllib.request
 
+from .elements import _VALID_SHAPE_PRESETS
 from .icons import resolve_icon
 
 DEFAULT_BASE_URL = "http://localhost:1234/v1"
 DEFAULT_MODEL = "qwen/qwen3.5-9b"
 
-_VALID_TYPES = {"rectangle", "oval", "line", "text", "table", "image"}
+_VALID_TYPES = {"rectangle", "oval", "shape", "line", "text", "table", "image"}
 _REQUIRED_FIELDS = {
     "rectangle": {"x", "y", "width", "height"},
     "oval": {"x", "y", "width", "height"},
+    "shape": {"x", "y", "width", "height", "preset"},
     "text": {"x", "y", "width", "height", "text"},
     "table": {"x", "y", "width", "height", "rows"},
     "image": {"x", "y", "width", "height"},  # plus one of icon/path, checked separately
@@ -210,6 +212,12 @@ def validate_elements(elements: list, icons_dir: str | None = None) -> list[str]
             problems.append(f"{tag}: 'align' must be one of {sorted(_VALID_ALIGN)}, got {el['align']!r}")
         if "valign" in el and el["valign"] not in _VALID_VALIGN:
             problems.append(f"{tag}: 'valign' must be one of {sorted(_VALID_VALIGN)}, got {el['valign']!r}")
+
+        if el_type == "shape" and el.get("preset") not in _VALID_SHAPE_PRESETS:
+            problems.append(
+                f"{tag} (type='shape'): 'preset' must be one of "
+                f"{sorted(_VALID_SHAPE_PRESETS)}, got {el.get('preset')!r}"
+            )
 
         if el_type == "image":
             icon, path = el.get("icon"), el.get("path")

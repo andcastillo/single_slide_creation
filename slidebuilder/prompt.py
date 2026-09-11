@@ -16,6 +16,7 @@ the schema text below to match.
 import json
 import os
 
+from .elements import _VALID_SHAPE_PRESETS
 from .units import DEFAULT_SLIDE_HEIGHT_IN, DEFAULT_SLIDE_WIDTH_IN
 
 # Re-exported for existing importers of this module -- the canonical
@@ -57,6 +58,23 @@ A filled/outlined shape, optionally with text centered or aligned inside it.
   line_width            optional, outline width in points (default 1)
 Text always word-wraps and the box grows taller (never shorter) than given
 if needed to fit -- never manually shrink text or truncate it instead.
+
+### "shape"
+Any shape beyond a plain rectangle/oval -- a star, an arrow, a diamond, a
+heart, and more (see the Shape presets list below for the exact set).
+Takes exactly the same fields as "rectangle"/"oval" above (x, y, width,
+height, text, font_*, align, valign, fill_color, line_color, line_width),
+PLUS:
+  preset                required: one of the exact names in the Shape
+                         presets list below -- nothing else. Do not guess
+                         or invent a preset name (e.g. a plausible-looking
+                         "star6" or "triangle") even if it seems like it
+                         should exist -- an unrecognized name silently
+                         renders as a plain rectangle instead of erroring,
+                         which is worse than obviously wrong. If the
+                         description asks for a shape not in the list,
+                         use the closest listed one instead of a made-up
+                         name.
 
 ### "text"
 A plain text label/caption with no fill or outline (use "rectangle" instead
@@ -155,6 +173,10 @@ def _format_icons(icons_dir: str) -> str:
     return "\n".join(lines) if lines else "  (none available)"
 
 
+def _format_shape_presets() -> str:
+    return "\n".join(f'  "{name}" -- {hint}' for name, hint in sorted(_VALID_SHAPE_PRESETS.items()))
+
+
 def build_system_prompt(
     theme: dict,
     icons_dir: str,
@@ -218,6 +240,13 @@ JSON object, it cannot be used.
 {_ELEMENT_SCHEMA}
 {_format_styles(theme)}
 
+## Shape presets
+
+For a "shape" element's "preset" field, one of these exact names (not
+"star", not "triangle" -- see the "shape" entry above for why):
+
+{_format_shape_presets()}
+
 ## Colors
 
 fill_color, line_color, font_color, header_fill_color, and header_font_color
@@ -252,4 +281,6 @@ labels, and the arrow into the box, following the same pattern):
 - "line" uses x1/y1/x2/y2 -- every other type uses x/y/width/height.
 - Every number is a plain JSON number, not a quoted string.
 - Colors are "#RRGGBB" or "$token" strings, never a CSS name like "blue".
+- A "shape" element's "preset" is copied exactly from the Shape presets
+  list, never guessed.
 """

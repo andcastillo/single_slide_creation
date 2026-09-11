@@ -129,6 +129,7 @@ corner. Colors are `"#RRGGBB"` strings.
 | type        | key fields |
 |-------------|------------|
 | `rectangle`, `oval` | `x, y, width, height`, `fill_color`, `line_color`, `line_width`, and optionally `text` with `font_size`, `bold`, `italic`, `font_color`, `align`, `valign` |
+| `shape`     | same fields as `rectangle`/`oval`, plus `preset` (required) naming any shape beyond a plain rectangle/oval -- a star, an arrow, a diamond, a heart, and more; see below for the exact, tested list |
 | `text`      | `x, y, width, height, text`, `font_size`, `bold`, `italic`, `font_color`, `align`, `valign` |
 | `table`     | `x, y, width, height`, `rows` (list of lists of strings), `col_widths`/`row_heights` (relative weights), `header_fill_color`, `header_font_color`, `fill_color`, `font_size`, `align` |
 | `image`     | `x, y, width, height`, and either `path` to an image file or `icon` naming a predefined icon (see below) |
@@ -175,6 +176,40 @@ way; this happens automatically on every `.pptx` save, nothing to opt into.
 
 See the docstring at the top of `slidebuilder/elements.py` for the full
 field list and defaults.
+
+## Shape presets (`type: "shape"`)
+
+`{"type": "shape", "preset": "star5", ...}` places any of these, styled
+the same way as `rectangle`/`oval` (`fill_color`, `line_color`, `text`,
+...):
+
+```
+star5, star8, star24, diamond, pentagon, hexagon, octagon, heart, cross,
+smiley, isosceles-triangle, right-triangle, trapezoid, parallelogram,
+right-arrow, left-arrow, up-arrow, down-arrow, quad-arrow,
+left-right-arrow, up-down-arrow, ring, chevron, block-arc, cloud-callout,
+flowchart-decision
+```
+
+(the full list with a one-line description of each is in
+`slidebuilder/elements.py`'s `_VALID_SHAPE_PRESETS`, and is what
+`slidebuilder/llm.py`'s `validate_elements()` checks `preset` against and
+what the LLM prompt lists.)
+
+This list is deliberately closed, not "any LibreOffice preset name" --
+found directly, asked to explain why a requested star wasn't rendering
+correctly: `CustomShapeGeometry`'s `Type` string accepts many more preset
+names than just `rectangle`/`ellipse` (used for those two types), but an
+*unrecognized* name doesn't error, it silently produces a plain rectangle
+instead -- confirmed for `star6`, `star10`, `star12`, `star16`, `star32`,
+bare `triangle`, `flowchart-process`, and bare `cloud`, each individually
+rendered and visually inspected, side by side with confirmed-working ones
+like `star5`/`star8`/`star24`/`isosceles-triangle`/`cloud-callout` in the
+same test to be sure the difference was real. An LLM given a truly
+open-ended preset field would eventually guess one of those, and get a
+silently wrong shape back with no error to react to -- so the field only
+accepts names individually confirmed to work, and both the prompt and
+`validate_elements()` enforce that.
 
 ## Predefined icons (`icons/`)
 
