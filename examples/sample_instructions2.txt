@@ -1,3 +1,4 @@
 Create a slide titled "Working with multiple files".
 
 I want to show 2 files at the left, "User_CV.csv" and "Job_profile.csv". There is a rectangle in the center describing a process called "AI matching improving your CV". Another file as the right of the slide with the name "Updated_CV.txt". Add arrows that goes from input files into center rectangle and an arrow from it to the output file. Use orange for coloring the center rectangle. Add an cloud icon over the rectangle to simbolyse that process run in the cloud. 
+

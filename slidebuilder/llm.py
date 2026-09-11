@@ -18,9 +18,12 @@ built against) has no pip/site-packages of its own to install into.
 """
 
 import json
+import os
 import re
 import urllib.error
 import urllib.request
+
+from .icons import resolve_icon
 
 DEFAULT_BASE_URL = "http://localhost:1234/v1"
 DEFAULT_MODEL = "qwen/qwen3.5-9b"
@@ -34,6 +37,8 @@ _REQUIRED_FIELDS = {
     "image": {"x", "y", "width", "height"},  # plus one of icon/path, checked separately
     "line": {"x1", "y1", "x2", "y2"},
 }
+_VALID_ALIGN = {"left", "center", "right"}
+_VALID_VALIGN = {"top", "middle", "bottom"}
 
 
 def call_llm(
@@ -163,11 +168,24 @@ def extract_json_object(text: str) -> dict:
     raise ValueError(f"No JSON object found in LLM output.\n--- raw output ---\n{text}")
 
 
-def validate_elements(elements: list) -> list[str]:
-    """Sanity-check a list of element dicts against the schema. Returns a
-    list of human-readable problem descriptions (empty if none found) --
-    doesn't raise, so callers can decide whether to proceed, retry, or
-    surface the problems to the user.
+def validate_elements(elements: list, icons_dir: str | None = None) -> list[str]:
+    """Sanity-check a list of element dicts against the schema, INCLUDING
+    every condition slidebuilder/elements.py's shape-building functions
+    would otherwise only discover by raising mid-way through actually
+    building the slide -- e.g. a table whose rows don't all have the same
+    number of cells. Catching that here instead means a bad response
+    fails before anything touches LibreOffice, rather than leaving a
+    slide half-built in the live document (confirmed happening exactly
+    that way once, from a table with uneven row lengths this function
+    didn't yet check for -- this function was written to close that gap).
+
+    Returns a list of human-readable problem descriptions (empty if none
+    found) -- doesn't raise, so callers can decide whether to proceed,
+    retry, or surface the problems to the user.
+
+    icons_dir, if given, also checks that every "icon" name an image
+    element specifies actually resolves to a file there (catching a
+    hallucinated icon name); omit to skip that one check.
     """
     problems = []
     if not isinstance(elements, list):
@@ -188,13 +206,45 @@ def validate_elements(elements: list) -> list[str]:
         if missing:
             problems.append(f"{tag} (type={el_type!r}): missing required field(s) {sorted(missing)}")
 
-        if el_type == "image" and "icon" not in el and "path" not in el:
-            problems.append(f"{tag} (type='image'): needs either 'icon' or 'path'")
+        if "align" in el and el["align"] not in _VALID_ALIGN:
+            problems.append(f"{tag}: 'align' must be one of {sorted(_VALID_ALIGN)}, got {el['align']!r}")
+        if "valign" in el and el["valign"] not in _VALID_VALIGN:
+            problems.append(f"{tag}: 'valign' must be one of {sorted(_VALID_VALIGN)}, got {el['valign']!r}")
+
+        if el_type == "image":
+            icon, path = el.get("icon"), el.get("path")
+            if not icon and not path:
+                problems.append(f"{tag} (type='image'): needs either 'icon' or 'path'")
+            elif icon and icons_dir:
+                try:
+                    resolve_icon(icon, icons_dir)
+                except FileNotFoundError as e:
+                    problems.append(f"{tag} (type='image'): {e}")
+            elif path and not os.path.isfile(path):
+                problems.append(f"{tag} (type='image'): path {path!r} does not exist")
 
         if el_type == "table":
             rows = el.get("rows")
-            if rows is not None and (not isinstance(rows, list) or not rows or not isinstance(rows[0], list)):
-                problems.append(f"{tag} (type='table'): 'rows' must be a non-empty list of lists")
+            if rows is not None:
+                if not isinstance(rows, list) or not rows or not isinstance(rows[0], list):
+                    problems.append(f"{tag} (type='table'): 'rows' must be a non-empty list of lists")
+                else:
+                    n_cols = len(rows[0])
+                    if any(not isinstance(r, list) or len(r) != n_cols for r in rows):
+                        problems.append(
+                            f"{tag} (type='table'): every row in 'rows' must have the same "
+                            f"number of cells ({n_cols}, from the first row)"
+                        )
+                    for size_field, expected_len, unit in (
+                        ("col_widths", n_cols, "column"),
+                        ("row_heights", len(rows), "row"),
+                    ):
+                        sizes = el.get(size_field)
+                        if sizes is not None and (not isinstance(sizes, list) or len(sizes) != expected_len):
+                            problems.append(
+                                f"{tag} (type='table'): '{size_field}' must have exactly "
+                                f"{expected_len} entries, one per {unit}"
+                            )
 
         for num_field in ("x", "y", "width", "height", "x1", "y1", "x2", "y2"):
             if num_field in el and not isinstance(el[num_field], (int, float)):

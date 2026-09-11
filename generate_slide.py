@@ -94,7 +94,7 @@ def main():
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
 
-    problems = validate_elements(elements)
+    problems = validate_elements(elements, icons_dir=args.icons_dir)
     if problems:
         print("ERROR: the LLM's element list has problems:", file=sys.stderr)
         for p in problems:

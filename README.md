@@ -382,8 +382,19 @@ that can drift out of date:
 
 If the model's response can't be parsed as JSON, or the parsed elements
 fail schema validation (missing required fields, unknown `type`, wrong
-value types, ...), `generate_slide.py` prints exactly what's wrong and the
-raw output, and exits without touching LibreOffice or the deck file.
+value types, an invalid `align`/`valign`, an unresolvable icon name, a
+table whose rows don't all have the same number of cells or whose
+`col_widths`/`row_heights` length doesn't match, ...),
+`generate_slide.py` prints exactly what's wrong and the raw output, and
+exits without touching LibreOffice or the deck file. That table check
+specifically was added after a real failure: a model produced a table
+with uneven row lengths, which `validate_elements()` at the time didn't
+catch, so it passed validation and then crashed deep inside
+`_create_table` -- after several other elements had already been added to
+the live slide. `validate_elements()` now mirrors every condition
+`slidebuilder/elements.py`'s shape-building functions themselves enforce,
+specifically so a bad response fails validation up front instead of
+leaving a half-built slide in your document.
 
 ## Layout
 
