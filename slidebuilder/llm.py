@@ -275,6 +275,66 @@ def validate_elements(elements: list, icons_dir: str | None = None) -> list[str]
     return problems
 
 
+def clamp_to_canvas(
+    elements: list,
+    slide_width_in: float,
+    slide_height_in: float,
+) -> tuple[list, list[str]]:
+    """Reposition (and, only as a last resort, resize) any element that
+    extends past the slide's bounds so it lands back on-canvas.
+
+    The system prompt already tells the model the canvas size and asks it
+    to respect it, but confirmed in practice, it sometimes doesn't --
+    reported directly: elements occasionally end up placed partly or
+    fully outside the slide. Preference stated for that case: move things
+    back in rather than shrink/rearrange to avoid overlap, so that's what
+    this does -- an element keeps its width/height and just gets
+    repositioned to fit, UNLESS it's larger than the canvas itself in
+    that dimension (impossible to fit by repositioning alone), in which
+    case only that dimension is shrunk to the canvas size, as a fallback.
+
+    Returns (adjusted_elements, notes) -- a new list (the input isn't
+    mutated) and a human-readable description of every change made, empty
+    if nothing needed adjusting.
+    """
+    adjusted = []
+    notes = []
+    for i, el in enumerate(elements):
+        el = dict(el)
+        tag = f"element[{i}]"
+
+        if el.get("type") == "line":
+            for x_key in ("x1", "x2"):
+                if isinstance(el.get(x_key), (int, float)):
+                    clamped = min(max(el[x_key], 0.0), slide_width_in)
+                    if clamped != el[x_key]:
+                        notes.append(f"{tag} (line): {x_key} {el[x_key]} -> {clamped}")
+                        el[x_key] = clamped
+            for y_key in ("y1", "y2"):
+                if isinstance(el.get(y_key), (int, float)):
+                    clamped = min(max(el[y_key], 0.0), slide_height_in)
+                    if clamped != el[y_key]:
+                        notes.append(f"{tag} (line): {y_key} {el[y_key]} -> {clamped}")
+                        el[y_key] = clamped
+
+        elif all(isinstance(el.get(k), (int, float)) for k in ("x", "y", "width", "height")):
+            x, y, w, h = el["x"], el["y"], el["width"], el["height"]
+            orig = (x, y, w, h)
+            w = min(w, slide_width_in)
+            h = min(h, slide_height_in)
+            x = min(max(x, 0.0), max(slide_width_in - w, 0.0))
+            y = min(max(y, 0.0), max(slide_height_in - h, 0.0))
+            if (x, y, w, h) != orig:
+                notes.append(
+                    f"{tag} (type={el.get('type')!r}): adjusted to fit the canvas "
+                    f"(x,y,width,height {orig} -> {(x, y, w, h)})"
+                )
+                el["x"], el["y"], el["width"], el["height"] = x, y, w, h
+
+        adjusted.append(el)
+    return adjusted, notes
+
+
 def generate_elements(
     system_prompt: str,
     instructions: str,

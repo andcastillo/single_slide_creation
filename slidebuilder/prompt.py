@@ -16,8 +16,12 @@ the schema text below to match.
 import json
 import os
 
-DEFAULT_SLIDE_WIDTH_IN = 10.0
-DEFAULT_SLIDE_HEIGHT_IN = 7.5
+from .units import DEFAULT_SLIDE_HEIGHT_IN, DEFAULT_SLIDE_WIDTH_IN
+
+# Re-exported for existing importers of this module -- the canonical
+# definition now lives in units.py, since builder.open_deck() needs it too
+# (to give a new deck this same size), not just this module.
+__all__ = ["DEFAULT_SLIDE_WIDTH_IN", "DEFAULT_SLIDE_HEIGHT_IN", "build_system_prompt"]
 
 # Short, human-written hints for icons this repo ships with, used only to
 # give the model a one-line sense of each -- purely cosmetic. An icon file

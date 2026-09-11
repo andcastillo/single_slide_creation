@@ -38,8 +38,8 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from slidebuilder import connect, create_or_append_slide, load_theme
-from slidebuilder.llm import DEFAULT_BASE_URL, DEFAULT_MODEL, generate_elements, validate_elements
-from slidebuilder.prompt import build_system_prompt
+from slidebuilder.llm import DEFAULT_BASE_URL, DEFAULT_MODEL, clamp_to_canvas, generate_elements, validate_elements
+from slidebuilder.prompt import DEFAULT_SLIDE_HEIGHT_IN, DEFAULT_SLIDE_WIDTH_IN, build_system_prompt
 
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_THEME_PATH = os.path.join(REPO_ROOT, "theme.json")
@@ -53,6 +53,9 @@ def main():
     parser.add_argument("--deck", default=DEFAULT_DECK_PATH, help=f"Output .pptx path (default: {DEFAULT_DECK_PATH})")
     parser.add_argument("--theme", default=DEFAULT_THEME_PATH, help="Path to theme JSON (default: theme.json)")
     parser.add_argument("--icons-dir", default=DEFAULT_ICONS_DIR, help="Path to icons/ folder")
+    parser.add_argument("--slide-width", type=float, default=DEFAULT_SLIDE_WIDTH_IN, help=f"Slide width in inches, told to the model and used to keep elements on-canvas (default: {DEFAULT_SLIDE_WIDTH_IN})")
+    parser.add_argument("--slide-height", type=float, default=DEFAULT_SLIDE_HEIGHT_IN, help=f"Slide height in inches (default: {DEFAULT_SLIDE_HEIGHT_IN})")
+    parser.add_argument("--no-clamp", action="store_true", help="Don't reposition/resize elements that end up outside the slide bounds -- by default they're moved (and, only if larger than the canvas itself, shrunk) back on-canvas after generation")
     parser.add_argument("--model", default=DEFAULT_MODEL, help=f"LLM model identifier (default: {DEFAULT_MODEL})")
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help=f"LLM server base URL (default: {DEFAULT_BASE_URL})")
     parser.add_argument("--api-key", default=os.environ.get("LLM_API_KEY"), help="Bearer token for a cloud provider (e.g. Gemini); not needed for a local server like LM Studio. Falls back to the LLM_API_KEY environment variable -- prefer that over this flag so the key doesn't end up in shell history/process listings.")
@@ -65,7 +68,7 @@ def main():
     args = parser.parse_args()
 
     theme = load_theme(args.theme)
-    system_prompt = build_system_prompt(theme, args.icons_dir)
+    system_prompt = build_system_prompt(theme, args.icons_dir, args.slide_width, args.slide_height)
 
     if args.show_prompt:
         print(system_prompt)
@@ -105,12 +108,23 @@ def main():
 
     elapsed = time.monotonic() - start
     print(f"Got {len(elements)} valid element(s) in {elapsed:.1f}s.")
+
+    if not args.no_clamp:
+        elements, clamp_notes = clamp_to_canvas(elements, args.slide_width, args.slide_height)
+        if clamp_notes:
+            print(f"Adjusted {len(clamp_notes)} element(s) that extended past the slide bounds:")
+            for n in clamp_notes:
+                print(f"  - {n}")
+
     if args.dry_run:
         print(json.dumps(elements, indent=2))
         return
 
     ctx, desktop = connect()
-    doc, page = create_or_append_slide(desktop, args.deck, elements, theme=theme)
+    doc, page = create_or_append_slide(
+        desktop, args.deck, elements, theme=theme,
+        width_in=args.slide_width, height_in=args.slide_height,
+    )
     print(f"Slide added. Saved to {args.deck} ({doc.DrawPages.Count} slide(s) total).")
 
 

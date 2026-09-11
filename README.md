@@ -348,9 +348,59 @@ any volume.
 
 This builds the system prompt (see below), sends it plus your instructions
 to the model, validates the JSON it returns against the element schema,
-and -- if that passes -- adds the slide to `examples/generated_deck.pptx`
-(or `--deck <path>`) in the LibreOffice session already running, exactly
-like `create_or_append_slide()` elsewhere in this README.
+adjusts anything that ended up outside the slide bounds back on-canvas
+(see below), and -- if all that passes -- adds the slide to
+`examples/generated_deck.pptx` (or `--deck <path>`) in the LibreOffice
+session already running, exactly like `create_or_append_slide()`
+elsewhere in this README.
+
+**Be explicit about arrangement.** Confirmed directly, on the same
+description run twice: results were noticeably better once the
+instructions spelled out how elements should be positioned relative to
+each other (e.g. "3 icons arranged in the same column", "at the end of
+the slide") rather than leaving layout for the model to infer. Treat
+layout as something to describe, the same as content.
+
+#### Keeping elements on the slide
+
+Even with the system prompt stating the canvas size and asking for
+elements to stay within it, a model will sometimes place one partly or
+fully outside anyway. Preference stated for that case: move things back
+in rather than rearrange to avoid overlap -- so after validation,
+`generate_slide.py` (via `clamp_to_canvas()` in `slidebuilder/llm.py`)
+repositions any element that extends past the bounds back on-canvas,
+keeping its width/height; only if an element is bigger than the canvas
+itself in some dimension (impossible to fit by repositioning alone) does
+it get shrunk in that dimension, as a last resort. A `line`'s endpoints
+are clamped independently the same way. Verified directly against seven
+constructed cases (off each edge, wider than the canvas, a line with both
+endpoints out of bounds, and an already-fine element left untouched) --
+every element ends up fully within `[0, slide width] x [0, slide
+height]`, with the unaffected one unchanged.
+
+`--slide-width`/`--slide-height` (inches, default 10 x 7.5, the classic
+4:3 PowerPoint size) control the canvas size stated in the prompt, what
+`clamp_to_canvas()` enforces, AND -- this part matters, not just cosmetic
+-- the actual page size `create_or_append_slide()` gives a brand-new deck
+(via `open_deck()` in `slidebuilder/builder.py`), rather than leaving it
+at whatever LibreOffice's own internal default happens to be. That last
+part was a real bug, not a hypothetical one: elements were still turning
+up cut off at the bottom of rendered slides despite passing
+`clamp_to_canvas()` cleanly, traced to the *actual* page LibreOffice had
+created being 11.02 x 6.20in on this machine -- close to, but not, the
+10 x 7.5in the prompt and the clamp step both assumed, and shorter in
+particular, so anything clamped against an assumed 7.5in height could
+still land below the real 6.20in one. Fixed by having `open_deck()`
+explicitly set a new deck's page size to match, so the assumption is
+correct by construction instead of by luck; confirmed directly both that
+a fresh deck now measures exactly 10 x 7.5in and that a full real
+generation (17 elements) rendered with nothing cut off afterward. This
+only applies to a brand-new deck -- appending to an existing one never
+touches its actual page size, whatever that already is.
+
+`--no-clamp` turns the repositioning off entirely, if you'd rather see
+the model's raw, unadjusted placement (e.g. while iterating on the
+prompt itself).
 
 Useful flags: `--dry-run` prints the generated elements as JSON without
 touching LibreOffice (good for checking the model's output, or for

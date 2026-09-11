@@ -9,6 +9,17 @@ the 1/100 mm integer units the UNO Draw/Impress API expects internally.
 INCH_TO_100MM = 2540  # 1 inch = 25.4 mm = 2540 (1/100 mm)
 CM_TO_100MM = 100
 
+# Standard slide canvas size (the classic 4:3 PowerPoint default), used by
+# builder.open_deck() to give a freshly-created presentation an explicit,
+# known size rather than leaving it at whatever LibreOffice's own internal
+# default happens to be -- confirmed on this machine to NOT be 10x7.5in as
+# might be assumed (it was 11.02x6.20in, an unusual, non-standard value),
+# which matters because slidebuilder.prompt tells an LLM the canvas is this
+# size and slidebuilder.llm.clamp_to_canvas enforces it -- both would be
+# wrong for a deck whose actual page size doesn't match.
+DEFAULT_SLIDE_WIDTH_IN = 10.0
+DEFAULT_SLIDE_HEIGHT_IN = 7.5
+
 
 def inches(value: float) -> int:
     """Convert inches to 1/100 mm (int), as used by shape Position/Size."""

@@ -32,6 +32,7 @@ from com.sun.star.beans import PropertyValue
 
 from .elements import create_element
 from .theme import apply_theme, load_theme
+from .units import DEFAULT_SLIDE_HEIGHT_IN, DEFAULT_SLIDE_WIDTH_IN, inches
 
 BLANK_LAYOUT = 20  # com.sun.star.presentation.DrawPage Layout: no placeholders
 
@@ -60,10 +61,22 @@ def _find_open_doc(desktop, file_url: str):
     return None
 
 
-def open_deck(desktop, path: str | None):
+def open_deck(
+    desktop,
+    path: str | None,
+    width_in: float = DEFAULT_SLIDE_WIDTH_IN,
+    height_in: float = DEFAULT_SLIDE_HEIGHT_IN,
+):
     """Open an existing deck, reusing it if already open in this LibreOffice
     instance, or create a brand-new blank presentation if `path` is None or
     doesn't exist yet.
+
+    width_in/height_in only matter for that brand-new case: a fresh
+    presentation is given this page size explicitly, rather than left at
+    whatever LibreOffice's own internal default happens to be (confirmed
+    NOT to be 10x7.5in on this machine -- see units.py). Ignored when
+    opening/reusing an existing deck, so its actual page size (whatever it
+    already is) is never overridden.
 
     Returns (doc, is_new) where is_new is True if the returned document has
     no content slides yet (a freshly created presentation, whose single
@@ -87,10 +100,14 @@ def open_deck(desktop, path: str | None):
             )
             return doc, False
 
-    # No existing file: create a fresh blank presentation.
+    # No existing file: create a fresh blank presentation, with an explicit
+    # page size (see the width_in/height_in docstring note above).
     doc = desktop.loadComponentFromURL(
         "private:factory/simpress", "_blank", 0, (_mkprop("Hidden", False),)
     )
+    page = doc.DrawPages.getByIndex(0)
+    page.Width = inches(width_in)
+    page.Height = inches(height_in)
     return doc, True
 
 
@@ -207,15 +224,21 @@ def create_or_append_slide(
     elements: list[dict],
     index: int | None = None,
     theme: dict | str | None = None,
+    width_in: float = DEFAULT_SLIDE_WIDTH_IN,
+    height_in: float = DEFAULT_SLIDE_HEIGHT_IN,
 ):
     """Convenience one-shot wrapper: open (or create) the deck at `path`,
     append a slide built from `elements` (optionally styled via `theme`),
     save, and return (doc, page).
 
+    width_in/height_in are passed straight to open_deck() -- see its
+    docstring; in short, they only take effect if `path` doesn't exist yet
+    (a brand-new deck), never overriding an existing deck's actual size.
+
     The document is left open in the LibreOffice window (not closed) so you
     can keep inspecting/editing it, or call this again to add more slides.
     """
-    doc, is_new = open_deck(desktop, path)
+    doc, is_new = open_deck(desktop, path, width_in=width_in, height_in=height_in)
     page = add_slide(doc, elements, is_new=is_new, index=index, theme=theme)
     save_deck(doc, path)
     return doc, page
