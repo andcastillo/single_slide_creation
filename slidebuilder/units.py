@@ -26,6 +26,12 @@ def inches(value: float) -> int:
     return round(value * INCH_TO_100MM)
 
 
+def to_inches(hundredths_mm: float) -> float:
+    """Convert 1/100 mm (a UNO Size/Position value, e.g. a DrawPage's
+    Width/Height) back to inches -- the inverse of inches()."""
+    return hundredths_mm / INCH_TO_100MM
+
+
 def cm(value: float) -> int:
     """Convert centimeters to 1/100 mm (int)."""
     return round(value * CM_TO_100MM)

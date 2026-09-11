@@ -37,7 +37,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from slidebuilder import connect, create_or_append_slide, load_theme
+from slidebuilder import add_slide, connect, get_page_size_in, load_theme, open_deck, save_deck
 from slidebuilder.llm import DEFAULT_BASE_URL, DEFAULT_MODEL, clamp_to_canvas, generate_elements, validate_elements
 from slidebuilder.prompt import DEFAULT_SLIDE_HEIGHT_IN, DEFAULT_SLIDE_WIDTH_IN, build_system_prompt
 
@@ -53,8 +53,8 @@ def main():
     parser.add_argument("--deck", default=DEFAULT_DECK_PATH, help=f"Output .pptx path (default: {DEFAULT_DECK_PATH})")
     parser.add_argument("--theme", default=DEFAULT_THEME_PATH, help="Path to theme JSON (default: theme.json)")
     parser.add_argument("--icons-dir", default=DEFAULT_ICONS_DIR, help="Path to icons/ folder")
-    parser.add_argument("--slide-width", type=float, default=DEFAULT_SLIDE_WIDTH_IN, help=f"Slide width in inches, told to the model and used to keep elements on-canvas (default: {DEFAULT_SLIDE_WIDTH_IN})")
-    parser.add_argument("--slide-height", type=float, default=DEFAULT_SLIDE_HEIGHT_IN, help=f"Slide height in inches (default: {DEFAULT_SLIDE_HEIGHT_IN})")
+    parser.add_argument("--slide-width", type=float, default=DEFAULT_SLIDE_WIDTH_IN, help=f"Slide width in inches, told to the model and used to keep elements on-canvas (default: {DEFAULT_SLIDE_WIDTH_IN}). Only actually used for a brand-new deck, or for --dry-run/--show-prompt -- appending to an existing deck auto-detects its real size instead and this is ignored")
+    parser.add_argument("--slide-height", type=float, default=DEFAULT_SLIDE_HEIGHT_IN, help=f"Slide height in inches (default: {DEFAULT_SLIDE_HEIGHT_IN}). Same caveat as --slide-width")
     parser.add_argument("--no-clamp", action="store_true", help="Don't reposition/resize elements that end up outside the slide bounds -- by default they're moved (and, only if larger than the canvas itself, shrunk) back on-canvas after generation")
     parser.add_argument("--model", default=DEFAULT_MODEL, help=f"LLM model identifier (default: {DEFAULT_MODEL})")
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help=f"LLM server base URL (default: {DEFAULT_BASE_URL})")
@@ -68,8 +68,18 @@ def main():
     args = parser.parse_args()
 
     theme = load_theme(args.theme)
-    system_prompt = build_system_prompt(theme, args.icons_dir, args.slide_width, args.slide_height)
 
+    # --show-prompt and --dry-run stay side-effect-free (no LibreOffice
+    # connection at all -- opening/creating a deck just to preview would
+    # pop up a visible window even though nothing gets saved) -- they use
+    # --slide-width/--slide-height (CLI or default) directly, which is
+    # only an approximation of an *existing* target deck's real size.
+    # Only the real build below actually opens that deck and queries its
+    # true page size instead, via get_page_size_in() -- since that's the
+    # one case correctness actually depends on it.
+    slide_width_in, slide_height_in = args.slide_width, args.slide_height
+
+    system_prompt = build_system_prompt(theme, args.icons_dir, slide_width_in, slide_height_in)
     if args.show_prompt:
         print(system_prompt)
         return
@@ -78,6 +88,22 @@ def main():
         instructions = f.read().strip()
     if not instructions:
         parser.error(f"{args.instructions_file} is empty")
+
+    doc, is_new = None, None
+    if not args.dry_run:
+        # Connect and open/create the target deck FIRST, before the (slow)
+        # LLM call -- both to fail fast if LibreOffice isn't running rather
+        # than after minutes of waiting, and because we need the deck open
+        # to know its real page size.
+        ctx, desktop = connect()
+        doc, is_new = open_deck(desktop, args.deck, width_in=slide_width_in, height_in=slide_height_in)
+        slide_width_in, slide_height_in = get_page_size_in(doc)
+        if not is_new:
+            print(
+                f"Appending to an existing deck -- using its actual page size "
+                f"({slide_width_in:.2f} x {slide_height_in:.2f}in), not --slide-width/--slide-height."
+            )
+            system_prompt = build_system_prompt(theme, args.icons_dir, slide_width_in, slide_height_in)
 
     print(f"Asking {args.model} at {args.base_url} to design the slide...")
     start = time.monotonic()
@@ -110,7 +136,7 @@ def main():
     print(f"Got {len(elements)} valid element(s) in {elapsed:.1f}s.")
 
     if not args.no_clamp:
-        elements, clamp_notes = clamp_to_canvas(elements, args.slide_width, args.slide_height)
+        elements, clamp_notes = clamp_to_canvas(elements, slide_width_in, slide_height_in)
         if clamp_notes:
             print(f"Adjusted {len(clamp_notes)} element(s) that extended past the slide bounds:")
             for n in clamp_notes:
@@ -120,11 +146,8 @@ def main():
         print(json.dumps(elements, indent=2))
         return
 
-    ctx, desktop = connect()
-    doc, page = create_or_append_slide(
-        desktop, args.deck, elements, theme=theme,
-        width_in=args.slide_width, height_in=args.slide_height,
-    )
+    add_slide(doc, elements, is_new=is_new, theme=theme)
+    save_deck(doc, args.deck)
     print(f"Slide added. Saved to {args.deck} ({doc.DrawPages.Count} slide(s) total).")
 
 

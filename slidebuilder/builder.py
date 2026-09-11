@@ -32,7 +32,7 @@ from com.sun.star.beans import PropertyValue
 
 from .elements import create_element
 from .theme import apply_theme, load_theme
-from .units import DEFAULT_SLIDE_HEIGHT_IN, DEFAULT_SLIDE_WIDTH_IN, inches
+from .units import DEFAULT_SLIDE_HEIGHT_IN, DEFAULT_SLIDE_WIDTH_IN, inches, to_inches
 
 BLANK_LAYOUT = 20  # com.sun.star.presentation.DrawPage Layout: no placeholders
 
@@ -109,6 +109,19 @@ def open_deck(
     page.Width = inches(width_in)
     page.Height = inches(height_in)
     return doc, True
+
+
+def get_page_size_in(doc) -> tuple[float, float]:
+    """Return (width_in, height_in) -- `doc`'s actual current page size, in
+    inches. For a deck open_deck() just created, this simply echoes back
+    whatever width_in/height_in was passed to it; for an existing deck, it's
+    that deck's real, already-established size (whatever that is), which
+    open_deck() never touches. Use this rather than assuming a deck matches
+    DEFAULT_SLIDE_WIDTH_IN/HEIGHT_IN -- an existing deck's actual size can
+    be anything.
+    """
+    page = doc.DrawPages.getByIndex(0)
+    return to_inches(page.Width), to_inches(page.Height)
 
 
 def add_slide(

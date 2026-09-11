@@ -394,9 +394,25 @@ still land below the real 6.20in one. Fixed by having `open_deck()`
 explicitly set a new deck's page size to match, so the assumption is
 correct by construction instead of by luck; confirmed directly both that
 a fresh deck now measures exactly 10 x 7.5in and that a full real
-generation (17 elements) rendered with nothing cut off afterward. This
-only applies to a brand-new deck -- appending to an existing one never
-touches its actual page size, whatever that already is.
+generation (17 elements) rendered with nothing cut off afterward.
+
+That fix only covers a brand-new deck, though -- appending to an
+*existing* one, of whatever size it already is, needed the same
+correctness the other way around: not setting the size, but **reading**
+it. `generate_slide.py` now opens the target deck (via
+`slidebuilder.open_deck()`) *before* building the prompt or calling the
+LLM, and if that deck already existed (rather than being freshly
+created), reads its actual page size with `get_page_size_in()`
+(`slidebuilder/builder.py`) and uses that -- not `--slide-width`/
+`--slide-height` -- for both the prompt and `clamp_to_canvas()`, printing
+a line saying so. `--slide-width`/`--slide-height` still matter for a
+brand-new deck (its size is set to match them) and for `--dry-run`/
+`--show-prompt` (which stay LibreOffice-free by design, so can't detect
+anything real -- see their descriptions above). Verified directly against
+a deck deliberately created at a different, non-default size (13.333 x
+7.5in, real PowerPoint widescreen, closed and reopened fresh from disk
+rather than reused live): the auto-detected size is what's printed and
+used, correctly, not the 10 x 7.5in default.
 
 `--no-clamp` turns the repositioning off entirely, if you'd rather see
 the model's raw, unadjusted placement (e.g. while iterating on the
