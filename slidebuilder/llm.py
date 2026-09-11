@@ -1,8 +1,13 @@
 """
-Talks to a local LLM served over an OpenAI-compatible chat completions API
-(LM Studio's built-in server: `lms server start`, listening on
-http://localhost:1234/v1 by default) and turns its response into a
-validated list of slidebuilder element dicts.
+Talks to an LLM served over an OpenAI-compatible chat completions API and
+turns its response into a validated list of slidebuilder element dicts.
+
+Works against any such API, local or cloud -- LM Studio's built-in server
+by default (`lms server start`, http://localhost:1234/v1, no api_key
+needed), but equally a cloud provider's OpenAI-compatible endpoint (e.g.
+Gemini's: https://generativelanguage.googleapis.com/v1beta/openai, with an
+api_key) just by passing different base_url/model/api_key. See README.md's
+"Using a cloud API instead" section.
 
 Uses only the standard library (urllib), not `requests` -- deliberately, so
 this works from whatever Python interpreter can `import uno` (see
@@ -31,11 +36,12 @@ _REQUIRED_FIELDS = {
 }
 
 
-def call_local_llm(
+def call_llm(
     system_prompt: str,
     user_prompt: str,
     model: str = DEFAULT_MODEL,
     base_url: str = DEFAULT_BASE_URL,
+    api_key: str | None = None,
     temperature: float = 0.2,
     timeout: float = 300.0,
     max_tokens: int | None = 4000,
@@ -43,22 +49,30 @@ def call_local_llm(
 ) -> str:
     """Send one chat completion request, return the assistant's raw text.
 
-    Some local models (reasoning-capable ones especially, e.g. Qwen3-style)
-    spend a large, hard-to-predict number of tokens on chain-of-thought
-    before the actual answer -- max_tokens bounds that so a request can't
-    run away; if generation gets cut off before finishing, this raises a
-    clear error rather than returning truncated/unparseable JSON silently
-    (that reasoning, when present, is a separate `reasoning_content` field
-    on OpenAI-compatible responses -- not part of the returned text here).
+    api_key, when given, is sent as "Authorization: Bearer <api_key>" --
+    needed for a cloud provider (e.g. Gemini), not for a local server like
+    LM Studio, which doesn't check it.
+
+    Some (especially local, reasoning-capable) models spend a large,
+    hard-to-predict number of tokens on chain-of-thought before the actual
+    answer -- max_tokens bounds that so a request can't run away; if
+    generation gets cut off before finishing, this raises a clear error
+    rather than returning truncated/unparseable JSON silently (that
+    reasoning, when present, is a separate `reasoning_content` field on
+    OpenAI-compatible responses -- not part of the returned text here).
 
     enable_thinking=False asks the backend (via the OpenAI-compatible
     "chat_template_kwargs" field llama.cpp-based servers, including LM
     Studio, forward straight into the model's own chat template) to skip
-    most of that reasoning -- NOT a guaranteed zero, confirmed live: a
-    trivial request went from ~1200 reasoning tokens/several minutes down
-    to ~50 reasoning tokens/a few seconds with this set, but a short
-    reasoning_content still came back. Leave as None (the default) to not
-    send the field at all, for a model/backend that doesn't support it.
+    most of that reasoning -- confirmed live, this is a soft hint, not a
+    reliable/complete fix: on a trivial request it cut reasoning from
+    ~1200 tokens to ~50, but on a real, non-trivial prompt it barely
+    changed runtime at all -- disabling thinking in the backend's own
+    settings (e.g. LM Studio's per-model "Enable thinking" toggle) is what
+    actually mattered there (~3.4x faster, confirmed, same output
+    quality). This is also Qwen3-chat-template-specific -- leave as None
+    (the default, field not sent at all) for a backend/model that doesn't
+    use that template, e.g. Gemini.
     """
     payload = json.dumps({
         "model": model,
@@ -70,25 +84,29 @@ def call_local_llm(
         **({"max_tokens": max_tokens} if max_tokens else {}),
         **({"chat_template_kwargs": {"enable_thinking": enable_thinking}} if enable_thinking is not None else {}),
     }).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     req = urllib.request.Request(
         f"{base_url}/chat/completions",
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method="POST",
+    )
+    hint = (
+        "Is it running? Start it with: lms server start, and load a model with: lms load <name>"
+        if not api_key
+        else "Check --base-url, --model, and --api-key."
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             body = resp.read()
     except urllib.error.HTTPError as e:
         raise ConnectionError(
-            f"Local LLM server at {base_url} returned HTTP {e.code}: {e.read()[:500]!r}\n"
-            f"Is it running? Start it with: lms server start, and load a model with: lms load <name>"
+            f"LLM server at {base_url} returned HTTP {e.code}: {e.read()[:500]!r}\n{hint}"
         ) from e
     except urllib.error.URLError as e:
-        raise ConnectionError(
-            f"Could not reach local LLM server at {base_url}: {e.reason}\n"
-            f"Is it running? Start it with: lms server start, and load a model with: lms load <name>"
-        ) from e
+        raise ConnectionError(f"Could not reach LLM server at {base_url}: {e.reason}\n{hint}") from e
 
     data = json.loads(body)
     try:
@@ -190,6 +208,7 @@ def generate_elements(
     instructions: str,
     model: str = DEFAULT_MODEL,
     base_url: str = DEFAULT_BASE_URL,
+    api_key: str | None = None,
     temperature: float = 0.2,
     timeout: float = 300.0,
     max_tokens: int | None = 4000,
@@ -201,8 +220,8 @@ def generate_elements(
     etc.) -- check validate_elements(elements) yourself; this just gets you
     parsed data to check.
     """
-    raw = call_local_llm(
-        system_prompt, instructions, model=model, base_url=base_url,
+    raw = call_llm(
+        system_prompt, instructions, model=model, base_url=base_url, api_key=api_key,
         temperature=temperature, timeout=timeout, max_tokens=max_tokens,
         enable_thinking=enable_thinking,
     )

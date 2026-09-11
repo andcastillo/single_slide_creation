@@ -305,6 +305,36 @@ reloaded after) -- same request, same `--no-think` flag, **82s**, a real
 matters to you, disable thinking at the model level in LM Studio first;
 treat `--no-think` as a minor supplement, not the main lever.
 
+### Using a cloud API instead
+
+`--base-url`/`--model`/`--api-key` aren't LM-Studio-specific -- anything
+served over an OpenAI-compatible `/chat/completions` endpoint works,
+including a cloud provider. Gemini exposes exactly that:
+
+```bash
+export LLM_API_KEY="your-gemini-api-key"   # don't pass it as --api-key directly -- shell history/process listings can leak it
+
+/usr/bin/python3 generate_slide.py examples/sample_instructions.txt \
+    --base-url https://generativelanguage.googleapis.com/v1beta/openai \
+    --model gemini-2.0-flash
+```
+
+(`--api-key` also exists directly, and takes priority over `LLM_API_KEY`
+if both are set, but the environment variable is the safer default.)
+`--model` needs an exact current Gemini model id, which Google updates
+over time -- check https://ai.google.dev/gemini-api/docs/models for
+what's currently available rather than trusting the example above to
+still be current when you read this. This path is unverified here (no
+API key available to test against) -- the mechanism (an
+OpenAI-compatible endpoint, Bearer auth) is confirmed correct at the code
+level (`slidebuilder/llm.py`), but the actual request/response round-trip
+against Gemini specifically hasn't been.
+
+A cloud call is a paid API request, unlike everything else in this
+pipeline -- nothing here estimates cost, so know your provider's pricing
+before turning a natural-language description into a slide this way at
+any volume.
+
 ### Usage
 
 ```bash

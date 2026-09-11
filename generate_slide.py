@@ -1,25 +1,32 @@
 #!/usr/bin/env /usr/bin/python3
 """
-Turn a natural-language slide description into a slide, via a local LLM.
+Turn a natural-language slide description into a slide, via an LLM.
 
     1. Read a plain-text instructions file (a description of ONE slide).
     2. Build the system prompt from theme.json + icons/ (slidebuilder.prompt),
-       and send it + the instructions to a local LLM (LM Studio's OpenAI-
-       compatible server) to get back slidebuilder element definitions.
+       and send it + the instructions to an LLM served over an OpenAI-
+       compatible API -- a local one (LM Studio, the default) or a cloud
+       one (e.g. Gemini, with --api-key) -- to get back slidebuilder
+       element definitions.
     3. Validate those elements, then add them as a slide in the LibreOffice
        session already running (via the UNO socket) -- creating the deck if
        it doesn't exist yet, or appending if it does.
 
 Prerequisites:
     - LibreOffice running and listening on the UNO socket (see README.md).
-    - LM Studio's local server running with a model loaded:
+    - An LLM reachable at --base-url. By default that's LM Studio's local
+      server with a model loaded:
           lms server start
           lms load qwen/qwen3.5-9b --context-length 16384
+      For a cloud API instead, see README.md's "Using a cloud API instead".
 
 Usage:
     /usr/bin/python3 generate_slide.py instructions.txt
     /usr/bin/python3 generate_slide.py instructions.txt --deck examples/my_deck.pptx
     /usr/bin/python3 generate_slide.py instructions.txt --model qwen/qwen3.5-9b --show-prompt
+    /usr/bin/python3 generate_slide.py instructions.txt \\
+        --base-url https://generativelanguage.googleapis.com/v1beta/openai \\
+        --model gemini-2.0-flash --api-key "$GEMINI_API_KEY"
 """
 
 import argparse
@@ -48,6 +55,7 @@ def main():
     parser.add_argument("--icons-dir", default=DEFAULT_ICONS_DIR, help="Path to icons/ folder")
     parser.add_argument("--model", default=DEFAULT_MODEL, help=f"LLM model identifier (default: {DEFAULT_MODEL})")
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help=f"LLM server base URL (default: {DEFAULT_BASE_URL})")
+    parser.add_argument("--api-key", default=os.environ.get("LLM_API_KEY"), help="Bearer token for a cloud provider (e.g. Gemini); not needed for a local server like LM Studio. Falls back to the LLM_API_KEY environment variable -- prefer that over this flag so the key doesn't end up in shell history/process listings.")
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--timeout", type=float, default=900.0, help="LLM request timeout in seconds (default: 900 -- local CPU inference with a reasoning model can take several minutes)")
     parser.add_argument("--max-tokens", type=int, default=4000, help="Cap on completion length; raise this if generation gets cut off (default: 4000)")
@@ -68,7 +76,7 @@ def main():
     if not instructions:
         parser.error(f"{args.instructions_file} is empty")
 
-    print(f"Asking {args.model} to design the slide (this can take several minutes on local CPU inference)...")
+    print(f"Asking {args.model} at {args.base_url} to design the slide...")
     start = time.monotonic()
     try:
         elements, raw = generate_elements(
@@ -76,6 +84,7 @@ def main():
             instructions,
             model=args.model,
             base_url=args.base_url,
+            api_key=args.api_key,
             temperature=args.temperature,
             timeout=args.timeout,
             max_tokens=args.max_tokens,
