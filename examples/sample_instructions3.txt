@@ -1,4 +1,4 @@
 I want you create an slide with title "Learning to use AI"
-This slide contains two SQL tables, one "Students" with columns id INT, name TEXT, and program_id TEXT. The table has 3 students. There is another table "Programs" with program_id, name TEXT, with 2 different programs, Connect the two tables with an arrow. Display 3 icons of people pointing to an blue oval with the label "Graduates", and the output of the oval points towards a robot with the label "Engineer".
+This slide contains two SQL tables, one "Students" with columns id INT, name TEXT, and program_id TEXT. The table has 3 students. There is another table "Programs" with program_id, name TEXT, with 2 different programs, Connect the two tables with an arrow. Display 3 icons of people pointing to an green oval with the label "Graduates", and the output of the oval points towards a robot with the label "Engineer".
 
 At the bottom of the slide there is a text with the label: "Everything is possible", with black background and white letters.

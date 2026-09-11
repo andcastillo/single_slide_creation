@@ -62,12 +62,27 @@ if you want a filled/outlined box around the text).
 
 ### "table"
   x, y, width, height   required
-  rows                  required: list of rows, each a list of cell strings,
-                         e.g. [["Header 1", "Header 2"], ["a", "b"]] -- the
-                         first row is treated as the header row
+  rows                  required: list of rows, each a list of SEPARATE cell
+                         strings -- one column = one string. Every row must
+                         have the same number of strings in it. The first
+                         row is treated as the header row.
+
+                         Correct, for a 3-column table with a header:
+                           "rows": [["id", "name", "program_id"],
+                                    ["1", "Ada", "P1"],
+                                    ["2", "Grace", "P2"]]
+
+                         WRONG -- do not do this, even though it looks like
+                         a normal markdown table: joining a row into one
+                         pipe-separated string, or putting it in a
+                         single-element list, produces a broken one-column
+                         table, not a 3-column one:
+                           "rows": [["id | name | program_id"],
+                                    ["1 | Ada | P1"],
+                                    ["2 | Grace | P2"]]
   col_widths            optional list of relative column widths, e.g. [2, 1, 1]
                          (defaults to equal-width columns)
-  row_heights           optional list of relative row heights (defaults to equal)
+  row_heights            optional list of relative row heights (defaults to equal)
   header_fill_color, header_font_color   optional, first row only
   fill_color             optional, all other rows
   font_size, font_family, align   optional, applied to every cell

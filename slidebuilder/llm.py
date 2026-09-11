@@ -246,6 +246,28 @@ def validate_elements(elements: list, icons_dir: str | None = None) -> list[str]
                                 f"{expected_len} entries, one per {unit}"
                             )
 
+                    # A model that's pattern-matched on markdown tables will
+                    # sometimes cram "a | b | c" into a single cell instead
+                    # of splitting it into separate list entries --
+                    # syntactically valid (a 1-column table), but not what
+                    # was meant. Confirmed happening in practice (Gemini
+                    # Flash Lite). Require 2+ pipes (3+ segments), not just
+                    # one: a single stray "|" is plausible in real content
+                    # (a false positive confirmed directly, e.g. "Bob |
+                    # Smith Jr."), but three-plus crammed-together values
+                    # essentially never is.
+                    if n_cols == 1:
+                        for r_idx, r in enumerate(rows):
+                            cell = r[0] if isinstance(r, list) and r else None
+                            if isinstance(cell, str) and len([s for s in cell.split("|") if s.strip()]) >= 3:
+                                problems.append(
+                                    f"{tag} (type='table'): row {r_idx} looks like a "
+                                    f"pipe-separated markdown row crammed into a single cell "
+                                    f"({cell!r}) instead of separate cells in the list -- "
+                                    f"each column's value must be its own string in the row's list"
+                                )
+                                break
+
         for num_field in ("x", "y", "width", "height", "x1", "y1", "x2", "y2"):
             if num_field in el and not isinstance(el[num_field], (int, float)):
                 problems.append(f"{tag}: field {num_field!r} must be a number, got {el[num_field]!r}")
