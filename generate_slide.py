@@ -26,6 +26,7 @@ import argparse
 import json
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -50,6 +51,7 @@ def main():
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--timeout", type=float, default=900.0, help="LLM request timeout in seconds (default: 900 -- local CPU inference with a reasoning model can take several minutes)")
     parser.add_argument("--max-tokens", type=int, default=4000, help="Cap on completion length; raise this if generation gets cut off (default: 4000)")
+    parser.add_argument("--no-think", action="store_true", help="Ask the model to skip most of its reasoning (via chat_template_kwargs enable_thinking=false) -- much faster, but only cuts reasoning down, doesn't eliminate it, and only has an effect on models/backends that support it")
     parser.add_argument("--show-prompt", action="store_true", help="Print the system prompt and exit, without calling the LLM")
     parser.add_argument("--dry-run", action="store_true", help="Print the generated elements as JSON, but don't touch LibreOffice")
     args = parser.parse_args()
@@ -67,6 +69,7 @@ def main():
         parser.error(f"{args.instructions_file} is empty")
 
     print(f"Asking {args.model} to design the slide (this can take several minutes on local CPU inference)...")
+    start = time.monotonic()
     try:
         elements, raw = generate_elements(
             system_prompt,
@@ -76,6 +79,7 @@ def main():
             temperature=args.temperature,
             timeout=args.timeout,
             max_tokens=args.max_tokens,
+            enable_thinking=False if args.no_think else None,
         )
     except ValueError as e:
         print(f"ERROR: {e}", file=sys.stderr)
@@ -90,7 +94,8 @@ def main():
         print(json.dumps(elements, indent=2), file=sys.stderr)
         sys.exit(1)
 
-    print(f"Got {len(elements)} valid element(s).")
+    elapsed = time.monotonic() - start
+    print(f"Got {len(elements)} valid element(s) in {elapsed:.1f}s.")
     if args.dry_run:
         print(json.dumps(elements, indent=2))
         return

@@ -279,6 +279,32 @@ hardware (no GPU), expect a single slide to take **several minutes** to
 generate; this is inherent to running an LLM locally without GPU
 acceleration, not something the script controls.
 
+`--base-url` doesn't have to point at this machine -- `generate_slide.py`
+works identically against LM Studio running on another computer on your
+network (e.g. one with more RAM/a GPU for a bigger model): start its
+server with `lms server start --bind 0.0.0.0` (the default, `127.0.0.1`,
+only accepts connections from that same machine) and make sure its
+firewall allows the port, then pass `--base-url http://<that-ip>:1234/v1
+--model <its-model-id>` here.
+
+#### Reasoning ("thinking") models and latency
+
+A reasoning-capable model (Qwen3-family ones, notably) can spend far more
+tokens on hidden chain-of-thought than on the actual answer -- for one
+trivial request, 1192 reasoning tokens versus 12 content tokens, confirmed
+via the response's separate `reasoning_content` field. `--no-think` asks
+the backend for less of that (via the OpenAI-compatible
+`chat_template_kwargs: {"enable_thinking": false}` field, which
+llama.cpp-based servers including LM Studio forward into the model's own
+chat template) -- but confirmed live, it's a soft hint: on a real,
+non-trivial slide description it cut runtime only marginally (282s). What
+actually worked was disabling thinking in LM Studio's own per-model
+settings (**Enable thinking** / **Preserve thinking**, both off, model
+reloaded after) -- same request, same `--no-think` flag, **82s**, a real
+~3.4x speedup, with no drop in output quality on that test. If latency
+matters to you, disable thinking at the model level in LM Studio first;
+treat `--no-think` as a minor supplement, not the main lever.
+
 ### Usage
 
 ```bash

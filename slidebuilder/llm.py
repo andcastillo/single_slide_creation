@@ -39,6 +39,7 @@ def call_local_llm(
     temperature: float = 0.2,
     timeout: float = 300.0,
     max_tokens: int | None = 4000,
+    enable_thinking: bool | None = None,
 ) -> str:
     """Send one chat completion request, return the assistant's raw text.
 
@@ -49,6 +50,15 @@ def call_local_llm(
     clear error rather than returning truncated/unparseable JSON silently
     (that reasoning, when present, is a separate `reasoning_content` field
     on OpenAI-compatible responses -- not part of the returned text here).
+
+    enable_thinking=False asks the backend (via the OpenAI-compatible
+    "chat_template_kwargs" field llama.cpp-based servers, including LM
+    Studio, forward straight into the model's own chat template) to skip
+    most of that reasoning -- NOT a guaranteed zero, confirmed live: a
+    trivial request went from ~1200 reasoning tokens/several minutes down
+    to ~50 reasoning tokens/a few seconds with this set, but a short
+    reasoning_content still came back. Leave as None (the default) to not
+    send the field at all, for a model/backend that doesn't support it.
     """
     payload = json.dumps({
         "model": model,
@@ -58,6 +68,7 @@ def call_local_llm(
         ],
         "temperature": temperature,
         **({"max_tokens": max_tokens} if max_tokens else {}),
+        **({"chat_template_kwargs": {"enable_thinking": enable_thinking}} if enable_thinking is not None else {}),
     }).encode("utf-8")
     req = urllib.request.Request(
         f"{base_url}/chat/completions",
@@ -182,6 +193,7 @@ def generate_elements(
     temperature: float = 0.2,
     timeout: float = 300.0,
     max_tokens: int | None = 4000,
+    enable_thinking: bool | None = None,
 ) -> tuple[list, str]:
     """Call the LLM and return (elements, raw_response_text). Raises
     ValueError if the response can't be parsed into a JSON object with an
@@ -192,6 +204,7 @@ def generate_elements(
     raw = call_local_llm(
         system_prompt, instructions, model=model, base_url=base_url,
         temperature=temperature, timeout=timeout, max_tokens=max_tokens,
+        enable_thinking=enable_thinking,
     )
     obj = extract_json_object(raw)
     if "elements" not in obj:
