@@ -1,0 +1,7 @@
+create a table to compare the 3 types of attributes in the entity relationship model:
+1. "Simple/compuesto", ejemplo: "nombre"
+2. "Multivaluado", ejemplo: telefonos
+3. "Derivado", ejemplo: Edad.
+
+The table has 3 columns first witht the graphic representation, second with the type of attribute (Atributo), and last with the 
+example (Ejemplo) with the graphic representation for this specific example. 

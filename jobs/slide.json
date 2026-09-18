@@ -1,0 +1,11 @@
+[
+  {"type": "text", "style": "titulo", "x": 0.5, "y": 0.35, "width": 12.333, "height": 2.4, "text": "ATRIBUTOS DE ESTUDIANTE"},
+  {"type": "line", "style": "regla", "x1": 0.5, "y1": 2.85, "x2": 12.833, "y2": 2.85},
+  {"type": "rectangle", "style": "nodo", "x": 5.42, "y": 5.0, "width": 2.5, "height": 1.3, "text": "ESTUDIANTE"},
+  {"type": "oval", "style": "ovalo", "x": 5.67, "y": 3.3, "width": 2.0, "height": 0.9, "text": "nombre"},
+  {"type": "oval", "style": "ovalo", "x": 1.0, "y": 5.15, "width": 3.0, "height": 1.0, "text": "fecha de nacimiento"},
+  {"type": "oval", "style": "ovalo", "x": 9.8, "y": 5.15, "width": 2.2, "height": 1.0, "text": "email"},
+  {"type": "line", "style": "conector", "arrow_end": false, "x1": 6.67, "y1": 4.2, "x2": 6.67, "y2": 5.0},
+  {"type": "line", "style": "conector", "arrow_end": false, "x1": 4.0, "y1": 5.65, "x2": 5.42, "y2": 5.65},
+  {"type": "line", "style": "conector", "arrow_end": false, "x1": 9.8, "y1": 5.65, "x2": 7.92, "y2": 5.65}
+]

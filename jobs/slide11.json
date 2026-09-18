@@ -1,0 +1,97 @@
+[
+  {
+    "type": "text",
+    "style": "titulo",
+    "x": 0.5,
+    "y": 0.4,
+    "width": 12.333464566929134,
+    "height": 0.8,
+    "text": "MODELO DE ENTIDAD-RELACIÓN"
+  },
+  {
+    "type": "line",
+    "style": "regla",
+    "x1": 0.5,
+    "y1": 1.25,
+    "x2": 12.833464566929134,
+    "y2": 1.25
+  },
+  {
+    "type": "text",
+    "style": "subtitulo",
+    "x": 0.5,
+    "y": 1.45,
+    "width": 12.333464566929134,
+    "height": 0.5,
+    "text": "Entidad ESTUDIANTE con atributo derivado"
+  },
+  {
+    "type": "text",
+    "style": "cuerpo",
+    "x": 0.5,
+    "y": 2.0,
+    "width": 12.333464566929134,
+    "height": 0.4,
+    "text": "El atributo derivado (edad) se representa con un óvalo de línea punteada; el atributo regular (fecha_nacimiento) con línea sólida.",
+    "font_size": 18
+  },
+  {
+    "type": "rectangle",
+    "style": "nodo",
+    "x": 5.17,
+    "y": 4.3,
+    "width": 3.0,
+    "height": 1.2,
+    "text": "ESTUDIANTE"
+  },
+  {
+    "type": "oval",
+    "style": "nodo",
+    "x": 1.6,
+    "y": 5.7,
+    "width": 2.6,
+    "height": 1.0,
+    "text": "fecha_nacimiento",
+    "font_family": "Space Grotesk",
+    "font_size": 17,
+    "line_width": 3
+  },
+  {
+    "type": "oval",
+    "style": "nodo",
+    "x": 9.13,
+    "y": 5.7,
+    "width": 2.6,
+    "height": 1.0,
+    "text": "edad",
+    "font_family": "Space Grotesk",
+    "font_size": 17,
+    "line_width": 3
+  },
+  {
+    "type": "line",
+    "style": "conector",
+    "x1": 5.17,
+    "y1": 4.9,
+    "x2": 3.4,
+    "y2": 6.2
+  },
+  {
+    "type": "line",
+    "style": "conector",
+    "x1": 8.17,
+    "y1": 4.9,
+    "x2": 10.43,
+    "y2": 6.2
+  },
+  {
+    "type": "text",
+    "style": "pie",
+    "x": 9.13,
+    "y": 6.75,
+    "width": 2.6,
+    "height": 0.3,
+    "text": "atributo derivado (línea punteada)",
+    "align": "center"
+  }
+]

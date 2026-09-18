@@ -1,0 +1,10 @@
+title: "SIMPLE VS. COMPUESTO"
+
+<span class="kicker">EJE 1 · SIMPLE VS. COMPUESTO</span>
+
+**`edad`** — SIMPLE: no se puede dividir en partes más pequeñas con sentido propio.
+
+**`nombre_completo` → `nombre` + `apellido`** — COMPUESTO: sí se puede dividir *(otro ejemplo: `dirección` → `calle` + `ciudad` + `código_postal`)*.
+
+Use the entity relationship model. I want to describe a simple vs compound attribute. Use elipses to exemplify. The compound attribute is an ellipse with its
+sub attribute attached to it. 

@@ -23,10 +23,18 @@ Prerequisites:
 Usage:
     /usr/bin/python3 generate_slide.py instructions.txt
     /usr/bin/python3 generate_slide.py instructions.txt --deck examples/my_deck.pptx
+    /usr/bin/python3 generate_slide.py instructions.txt --deck examples/my_deck.pptx --after 2
     /usr/bin/python3 generate_slide.py instructions.txt --model qwen/qwen3.5-9b --show-prompt
     /usr/bin/python3 generate_slide.py instructions.txt \\
         --base-url https://generativelanguage.googleapis.com/v1beta/openai \\
         --model gemini-2.0-flash --api-key "$GEMINI_API_KEY"
+    /usr/bin/python3 generate_slide.py instructions.txt --use-cache
+
+Every real LLM call's parsed element list is cached to a .json file next to
+the instructions file (instructions.txt -> instructions.json). Edit that
+file by hand and re-run with --use-cache to replay it without calling the
+LLM again -- useful for debugging generation issues or hand-tweaking a
+slide's elements directly.
 """
 
 import argparse
@@ -51,6 +59,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("instructions_file", help="Path to a text file describing the slide in natural language")
     parser.add_argument("--deck", default=DEFAULT_DECK_PATH, help=f"Output .pptx path (default: {DEFAULT_DECK_PATH})")
+    parser.add_argument("--after", type=int, default=None, help="1-based slide number to insert the new slide after (e.g. 2 inserts it as slide 3), for an existing deck. Default: append at the end. Use 0 to insert it as the new first slide.")
     parser.add_argument("--theme", default=DEFAULT_THEME_PATH, help="Path to theme JSON (default: theme.json)")
     parser.add_argument("--icons-dir", default=DEFAULT_ICONS_DIR, help="Path to icons/ folder")
     parser.add_argument("--slide-width", type=float, default=DEFAULT_SLIDE_WIDTH_IN, help=f"Slide width in inches, told to the model and used to keep elements on-canvas (default: {DEFAULT_SLIDE_WIDTH_IN}). Only actually used for a brand-new deck, or for --dry-run/--show-prompt -- appending to an existing deck auto-detects its real size instead and this is ignored")
@@ -65,7 +74,14 @@ def main():
     parser.add_argument("--no-think", action="store_true", help="Ask the model to skip most of its reasoning (via chat_template_kwargs enable_thinking=false) -- much faster, but only cuts reasoning down, doesn't eliminate it, and only has an effect on models/backends that support it")
     parser.add_argument("--show-prompt", action="store_true", help="Print the system prompt and exit, without calling the LLM")
     parser.add_argument("--dry-run", action="store_true", help="Print the generated elements as JSON, but don't touch LibreOffice")
+    parser.add_argument("--use-cache", action="store_true", help="Skip the LLM call and load the element list from the cache file instead (see below) -- lets you re-run against a hand-edited or previously generated element list. Errors out if that file doesn't exist yet.")
     args = parser.parse_args()
+
+    # Every real LLM call's parsed element list is written here (same path
+    # as the instructions file, with a .json extension) so it can be
+    # inspected, hand-edited, and replayed via --use-cache without paying
+    # for another (slow, and for a cloud model, billed) LLM call.
+    cache_path = os.path.splitext(args.instructions_file)[0] + ".json"
 
     theme = load_theme(args.theme)
 
@@ -105,23 +121,34 @@ def main():
             )
             system_prompt = build_system_prompt(theme, args.icons_dir, slide_width_in, slide_height_in)
 
-    print(f"Asking {args.model} at {args.base_url} to design the slide...")
-    start = time.monotonic()
-    try:
-        elements, raw = generate_elements(
-            system_prompt,
-            instructions,
-            model=args.model,
-            base_url=args.base_url,
-            api_key=args.api_key,
-            temperature=args.temperature,
-            timeout=args.timeout,
-            max_tokens=args.max_tokens,
-            enable_thinking=False if args.no_think else None,
-        )
-    except ValueError as e:
-        print(f"ERROR: {e}", file=sys.stderr)
-        sys.exit(1)
+    if args.use_cache:
+        if not os.path.isfile(cache_path):
+            parser.error(f"--use-cache given but {cache_path} doesn't exist yet -- run once without it first")
+        print(f"Using cached element list from {cache_path} (skipping the LLM).")
+        with open(cache_path, "r", encoding="utf-8") as f:
+            elements = json.load(f)
+    else:
+        print(f"Asking {args.model} at {args.base_url} to design the slide...")
+        start = time.monotonic()
+        try:
+            elements, raw = generate_elements(
+                system_prompt,
+                instructions,
+                model=args.model,
+                base_url=args.base_url,
+                api_key=args.api_key,
+                temperature=args.temperature,
+                timeout=args.timeout,
+                max_tokens=args.max_tokens,
+                enable_thinking=False if args.no_think else None,
+            )
+        except ValueError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            sys.exit(1)
+        elapsed = time.monotonic() - start
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(elements, f, indent=2, ensure_ascii=False)
+        print(f"Cached the LLM's element list to {cache_path}.")
 
     problems = validate_elements(elements, icons_dir=args.icons_dir)
     if problems:
@@ -132,8 +159,10 @@ def main():
         print(json.dumps(elements, indent=2), file=sys.stderr)
         sys.exit(1)
 
-    elapsed = time.monotonic() - start
-    print(f"Got {len(elements)} valid element(s) in {elapsed:.1f}s.")
+    if args.use_cache:
+        print(f"Got {len(elements)} valid element(s) from cache.")
+    else:
+        print(f"Got {len(elements)} valid element(s) in {elapsed:.1f}s.")
 
     if not args.no_clamp:
         elements, clamp_notes = clamp_to_canvas(elements, slide_width_in, slide_height_in)
@@ -146,7 +175,15 @@ def main():
         print(json.dumps(elements, indent=2))
         return
 
-    add_slide(doc, elements, is_new=is_new, theme=theme)
+    index = None
+    if args.after is not None:
+        if is_new:
+            parser.error("--after doesn't apply to a brand-new deck (it only has the one slide being created)")
+        if not (0 <= args.after <= doc.DrawPages.Count):
+            parser.error(f"--after {args.after} is out of range for a deck with {doc.DrawPages.Count} slide(s)")
+        index = args.after
+
+    add_slide(doc, elements, is_new=is_new, index=index, theme=theme)
     save_deck(doc, args.deck)
     print(f"Slide added. Saved to {args.deck} ({doc.DrawPages.Count} slide(s) total).")
 

@@ -1,0 +1,91 @@
+[
+  {
+    "type": "text",
+    "style": "titulo",
+    "x": 0.5,
+    "y": 0.4,
+    "width": 12.333464566929134,
+    "height": 0.8,
+    "text": "MONOVALUADO VS. MULTIVALUADO"
+  },
+  {
+    "type": "line",
+    "style": "regla",
+    "x1": 0.5,
+    "y1": 1.25,
+    "x2": 12.833464566929134,
+    "y2": 1.25
+  },
+  {
+    "type": "text",
+    "style": "subtitulo",
+    "x": 0.5,
+    "y": 1.5,
+    "width": 12.333464566929134,
+    "height": 0.5,
+    "text": "Notación de atributos en el modelo entidad-relación"
+  },
+  {
+    "type": "text",
+    "style": "kicker",
+    "x": 0.5,
+    "y": 2.2,
+    "width": 6.0,
+    "height": 0.4,
+    "text": "MONOVALUADO"
+  },
+  {
+    "type": "oval",
+    "style": "nodo",
+    "x": 1.0,
+    "y": 2.8,
+    "width": 5.0,
+    "height": 1.4,
+    "text": "fecha_nacimiento: 14/03/2004"
+  },
+  {
+    "type": "text",
+    "style": "cuerpo",
+    "x": 0.5,
+    "y": 4.4,
+    "width": 6.0,
+    "height": 0.8,
+    "text": "Un solo valor por entidad. Se representa con un único óvalo."
+  },
+  {
+    "type": "text",
+    "style": "kicker",
+    "x": 6.833464566929134,
+    "y": 2.2,
+    "width": 6.0,
+    "height": 0.4,
+    "text": "MULTIVALUADO"
+  },
+  {
+    "type": "oval",
+    "style": "nodo",
+    "x": 7.333464566929134,
+    "y": 2.8,
+    "width": 5.0,
+    "height": 1.4,
+    "text": ""
+  },
+  {
+    "type": "oval",
+    "style": "nodo",
+    "x": 7.533464566929134,
+    "y": 2.95,
+    "width": 4.6,
+    "height": 1.1,
+    "text": "telefonos: 300-111-2233, 601-444-5566"
+  },
+  {
+    "type": "text",
+    "style": "cuerpo",
+    "x": 6.833464566929134,
+    "y": 4.4,
+    "width": 6.0,
+    "height": 0.8,
+    "text": "Puede tener varios valores (celular y fijo). Se representa con un óvalo doble."
+  }
+]

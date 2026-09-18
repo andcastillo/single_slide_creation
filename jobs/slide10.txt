@@ -1,0 +1,9 @@
+TITLE: "MONOVALUADO VS. MULTIVALUADO"
+
+The slide will show the difference in notation for the single valued and multivalued attribute in the entity relationship model. 
+single valued are represented by ellipses, and multivalued are represented with a double line ellipse, it it like a ellipse within another ellipse. 
+Use the following two examples and text: 
+
+**`fecha_nacimiento: 14/03/2004`** — MONOVALUADO: un solo valor por entidad.
+
+**`telefonos: 300-111-2233, 601-444-5566`** — MULTIVALUADO: puede tener varios valores (celular y fijo).

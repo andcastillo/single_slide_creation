@@ -1,0 +1,124 @@
+[
+  {
+    "type": "text",
+    "style": "kicker",
+    "x": 0.5,
+    "y": 0.4,
+    "width": 12.333464566929134,
+    "height": 0.4,
+    "text": "EJE 1 · SIMPLE VS. COMPUESTO",
+    "align": "center"
+  },
+  {
+    "type": "text",
+    "style": "titulo",
+    "x": 0.5,
+    "y": 0.85,
+    "width": 12.333464566929134,
+    "height": 0.8,
+    "text": "SIMPLE VS. COMPUESTO",
+    "align": "center"
+  },
+  {
+    "type": "line",
+    "style": "regla",
+    "x1": 0.5,
+    "y1": 1.7,
+    "x2": 12.833464566929134,
+    "y2": 1.7
+  },
+  {
+    "type": "text",
+    "style": "subtitulo",
+    "x": 0.5,
+    "y": 1.95,
+    "width": 5.5,
+    "height": 0.5,
+    "text": "SIMPLE",
+    "align": "center"
+  },
+  {
+    "type": "text",
+    "style": "subtitulo",
+    "x": 7.333464566929134,
+    "y": 1.95,
+    "width": 5.5,
+    "height": 0.5,
+    "text": "COMPUESTO",
+    "align": "center"
+  },
+  {
+    "type": "oval",
+    "style": "foco",
+    "x": 1.5,
+    "y": 2.7,
+    "width": 3.5,
+    "height": 1.3,
+    "text": "edad"
+  },
+  {
+    "type": "text",
+    "style": "cuerpo",
+    "x": 0.5,
+    "y": 4.3,
+    "width": 5.5,
+    "height": 1.6,
+    "text": "No se puede dividir en partes más pequeñas con sentido propio.",
+    "align": "center"
+  },
+  {
+    "type": "oval",
+    "style": "foco",
+    "x": 7.333464566929134,
+    "y": 2.7,
+    "width": 3.5,
+    "height": 1.3,
+    "text": "nombre_completo"
+  },
+  {
+    "type": "line",
+    "style": "conector",
+    "x1": 8.083464566929134,
+    "y1": 4.0,
+    "x2": 7.583464566929134,
+    "y2": 4.7,
+    "arrow_end": false
+  },
+  {
+    "type": "line",
+    "style": "conector",
+    "x1": 9.083464566929134,
+    "y1": 4.0,
+    "x2": 9.583464566929134,
+    "y2": 4.7,
+    "arrow_end": false
+  },
+  {
+    "type": "oval",
+    "style": "foco",
+    "x": 6.333464566929134,
+    "y": 4.7,
+    "width": 2.5,
+    "height": 1.0,
+    "text": "nombre"
+  },
+  {
+    "type": "oval",
+    "style": "foco",
+    "x": 9.083464566929134,
+    "y": 4.7,
+    "width": 2.5,
+    "height": 1.0,
+    "text": "apellido"
+  },
+  {
+    "type": "text",
+    "style": "cuerpo",
+    "x": 7.333464566929134,
+    "y": 6.0,
+    "width": 5.5,
+    "height": 1.0,
+    "text": "Sí se puede dividir. Otro ejemplo: dirección → calle + ciudad + código_postal.",
+    "align": "center"
+  }
+]

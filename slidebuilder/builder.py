@@ -154,10 +154,35 @@ def add_slide(
         # starts with (it may already carry title/content placeholder
         # shapes -- setting Layout below clears those).
         page = pages.getByIndex(0)
-    else:
-        insert_at = pages.Count if index is None else index
+    elif index is None:
+        # insertNewByIndex(n) lands the new page at n+1 (see below) --
+        # but at this upper boundary (n == Count, one past the last valid
+        # index) it clamps to a plain append, landing at exactly Count as
+        # expected, so no adjustment is needed for the common append case.
+        insert_at = pages.Count
         pages.insertNewByIndex(insert_at)
         page = pages.getByIndex(insert_at)
+    elif index == 0:
+        # insertNewByIndex(n) always lands the new page at n+1, for every
+        # n (including 0, and even -1 which just clamps to append) -- so
+        # there's no n that lands a page AT index 0. Work around it by
+        # inserting after the current first page (-> lands at index 1),
+        # then swapping the two pages' shapes so the new page ends up
+        # holding the *old* first page's content and vice versa -- i.e.
+        # the freshly generated slide ends up at index 0 as requested.
+        old_first = pages.getByIndex(0)
+        pages.insertNewByIndex(0)
+        new_page = pages.getByIndex(1)
+        for shape in list(old_first):
+            old_first.remove(shape)
+            new_page.add(shape)
+        new_page.Layout = old_first.Layout
+        page = old_first
+    else:
+        # insertNewByIndex(n) lands the new page at n+1, so to land it AT
+        # `index` we must insert after `index - 1` instead.
+        pages.insertNewByIndex(index - 1)
+        page = pages.getByIndex(index)
 
     page.Layout = BLANK_LAYOUT
 

@@ -1,0 +1,71 @@
+[
+  {
+    "type": "text",
+    "style": "titulo",
+    "x": 0.5,
+    "y": 0.4,
+    "width": 12.333464566929134,
+    "height": 0.8,
+    "text": "TIPOS DE ATRIBUTOS"
+  },
+  {
+    "type": "line",
+    "style": "regla",
+    "x1": 0.5,
+    "y1": 1.2,
+    "x2": 12.833464566929134,
+    "y2": 1.2
+  },
+  {
+    "type": "text",
+    "style": "subtitulo",
+    "x": 0.5,
+    "y": 1.35,
+    "width": 12.333464566929134,
+    "height": 0.4,
+    "text": "Representación gráfica y ejemplos en el modelo entidad-relación"
+  },
+  {
+    "type": "table",
+    "style": "tabla",
+    "x": 0.5,
+    "y": 1.9,
+    "width": 12.333464566929134,
+    "height": 4.8,
+    "rows": [
+      [
+        "Representación",
+        "Atributo",
+        "Ejemplo"
+      ],
+      [
+        "(ovale simple)",
+        "Simple / Compuesto",
+        "nombre"
+      ],
+      [
+        "(ovale doble)",
+        "Multivaluado",
+        "telefonos"
+      ],
+      [
+        "(ovale punteado)",
+        "Derivado",
+        "Edad"
+      ]
+    ],
+    "col_widths": [
+      3,
+      4,
+      5
+    ],
+    "row_heights": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "font_size": 18,
+    "align": "center"
+  }
+]

@@ -1,0 +1,4 @@
+Slide title "ATRIBUTOS DE ESTUDIANTE"
+
+It displays a entity(rectangle) called ESTUDIANTE, with 3 attributes "nombre", "fecha_nacimiento", and "email".
+Use the entity-relationship model. Attributes are ovals and join the entity with its attributes using lines.ñ

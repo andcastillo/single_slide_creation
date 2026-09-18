@@ -320,7 +320,21 @@ network (e.g. one with more RAM/a GPU for a bigger model): start its
 server with `lms server start --bind 0.0.0.0` (the default, `127.0.0.1`,
 only accepts connections from that same machine) and make sure its
 firewall allows the port, then pass `--base-url http://<that-ip>:1234/v1
---model <its-model-id>` here.
+--model <its-model-id>` here. Confirmed working example, a machine on the
+LAN serving `qwen/qwen3.8-27b`:
+
+```bash
+/usr/bin/python3 generate_slide.py jobs/slide.txt \
+    --deck jobs/S5.pptx \
+    --after 8 \
+    --theme theme_brutalista.json \
+    --base-url http://192.168.18.9:1234/v1 \
+    --model qwen/qwen3.8-27b
+```
+
+(Get the exact model id from that server with
+`curl http://<that-ip>:1234/v1/models` if unsure -- it must match exactly,
+including any `org/` prefix.)
 
 #### Reasoning ("thinking") models and latency
 
@@ -349,21 +363,26 @@ including a cloud provider. Gemini exposes exactly that:
 ```bash
 export LLM_API_KEY="your-gemini-api-key"   # don't pass it as --api-key directly -- shell history/process listings can leak it
 
-/usr/bin/python3 generate_slide.py examples/sample_instructions.txt \
+/usr/bin/python3 generate_slide.py jobs/slide.txt \
+    --deck jobs/S5.pptx \
+    --after 8 \
+    --theme theme_brutalista.json \
     --base-url https://generativelanguage.googleapis.com/v1beta/openai \
-    --model gemini-2.0-flash
+    --model gemini-3.6-flash
 ```
 
 (`--api-key` also exists directly, and takes priority over `LLM_API_KEY`
 if both are set, but the environment variable is the safer default.)
 `--model` needs an exact current Gemini model id, which Google updates
-over time -- check https://ai.google.dev/gemini-api/docs/models for
-what's currently available rather than trusting the example above to
-still be current when you read this. This path is unverified here (no
-API key available to test against) -- the mechanism (an
-OpenAI-compatible endpoint, Bearer auth) is confirmed correct at the code
-level (`slidebuilder/llm.py`), but the actual request/response round-trip
-against Gemini specifically hasn't been.
+over time and retires old ones -- `gemini-2.0-flash` (this doc's original
+example) is already gone, returning HTTP 404 with a pointer to
+`gemini-3.6-flash` as its replacement. Check
+https://ai.google.dev/gemini-api/docs/models for what's current rather
+than trusting either name to still be right when you read this. Auth and
+the request/response round-trip against Gemini are confirmed working end
+to end; `gemini-3.6-flash` specifically has also returned HTTP 503 ("high
+demand") on repeated attempts -- that's Gemini-side overload, not a bug
+here, so just retry (possibly with a short wait) if you hit it.
 
 A cloud call is a paid API request, unlike everything else in this
 pipeline -- nothing here estimates cost, so know your provider's pricing

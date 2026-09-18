@@ -1,0 +1,208 @@
+{
+  "_comment": "Traduccion del sistema de diseno brutalista de /data/git/bases_de_datos_2026/diapositivas/_estilo.md (y su implementacion Marp en tema-marp-brutalista.css) al vocabulario de theme.json de slidebuilder. Fuente de verdad de tamanos: _estilo.md §3 (ya esta en pt, se copio literal). Fuente de verdad de anchos de borde: _estilo.md §4 (esta en px CSS a 96dpi; convertidos a pt con *0.75, igual que los renderiza tema-marp-brutalista.css). Los 3 tipos de letra (Archivo Black, Space Grotesk, IBM Plex Mono) estan confirmados instalados en esta maquina (fc-list), asi que se usan directos, sin fallback.",
+
+  "_limitaciones": "Cosas de _estilo.md que este sistema (UNO/LibreOffice via slidebuilder) NO puede expresar como campo de estilo -- se resuelven a mano por diapositiva, no aqui: (1) MAYUSCULAS/versalitas y tracking de letras (kicker, H1, .nodo) -- no hay text-transform/letter-spacing, escribe el texto ya en mayusculas en el elemento. (2) 'atenuado'/opacidad 35% de RESALTAR-Y-ATENUAR -- no hay campo opacity; usa font_color/line_color '$muted' como aproximacion solida en el elemento que se atenua (no crear un estilo aparte para esto, es un estado por-diapositiva, no un preset). (3) Sombra dura desplazada (10px 10px 0 ink, para tarjetas 'estampilla') -- no hay drop-shadow; simulalo con DOS elementos: un rectangle relleno '$ink' sin borde, desplazado x+0.08in/y+0.08in detras, y la tarjeta real encima. (4) Borde punteado de .placeholder -- no hay dash style; 'placeholder_box' usa borde solido como aproximacion (ver nota en el estilo). (5) Subrayado del atributo clave en notacion Chen -- no hay campo underline; usa 'bold: true' como sustituto o edita el texto a mano en LibreOffice despues. (6) H1 con border-bottom -- una 'text' no lleva borde parcial; pon una 'line' con el estilo 'regla' justo debajo del titulo en vez de un borde en el propio texto.",
+
+  "colors": {
+    "ink": "#111111",
+    "paper": "#FFFFFF",
+    "muted": "#BDB8AC",
+    "accent_foco": "#FFD400",
+    "accent_problema": "#E8382B",
+    "accent_solucion": "#2AA876"
+  },
+
+  "styles": {
+    "kicker": {
+      "_uso": "Etiqueta invertida sobre el H1 (portada/cierre) o etiqueta de grupo. Escribe el texto en MAYUSCULAS a mano -- no hay text-transform.",
+      "font_family": "Space Grotesk",
+      "font_size": 20,
+      "bold": true,
+      "font_color": "$paper",
+      "fill_color": "$ink",
+      "line_color": null,
+      "align": "center",
+      "valign": "middle"
+    },
+    "titulo": {
+      "_uso": "H1 -- unico titulo de la diapositiva. Escribe en MAYUSCULAS a mano. Acompanalo de una 'line' con estilo 'regla' debajo (no lleva relleno ni borde propio).",
+      "font_family": "Archivo Black",
+      "font_size": 31.5,
+      "bold": false,
+      "font_color": "$ink",
+      "fill_color": null,
+      "line_color": null,
+      "align": "left",
+      "valign": "top"
+    },
+    "titulo_portada": {
+      "_uso": "H1 de portada/cierre-transicion -- mas grande, funciona como 'tapa' (_estilo.md §6).",
+      "font_family": "Archivo Black",
+      "font_size": 40.5,
+      "bold": false,
+      "font_color": "$ink",
+      "fill_color": null,
+      "line_color": null,
+      "align": "left",
+      "valign": "top"
+    },
+    "regla": {
+      "_uso": "Linea que hace de border-bottom del H1, o de separador (ej. debajo de un chen-attrs-row). line, no shape: usar x1,y1,x2,y2.",
+      "line_color": "$ink",
+      "line_width": 3.75
+    },
+    "subtitulo": {
+      "_uso": "H2 -- subtitulo o pregunta. La familia solo tiene bold on/off; 'Medium' de _estilo.md se deja como bold:false.",
+      "font_family": "Space Grotesk",
+      "font_size": 22.5,
+      "bold": false,
+      "font_color": "$ink",
+      "align": "left",
+      "valign": "top"
+    },
+    "cuerpo": {
+      "_uso": "Parrafos y vinetas. Para el estado 'atenuado' de RESALTAR-Y-ATENUAR, sobreescribe font_color a '$muted' en ese elemento puntual.",
+      "font_family": "Space Grotesk",
+      "font_size": 26,
+      "bold": false,
+      "font_color": "$ink",
+      "align": "left",
+      "valign": "top"
+    },
+    "codigo": {
+      "_uso": "Bloque de SQL/codigo -- ink sobre paper, borde 4px.",
+      "font_family": "IBM Plex Mono",
+      "font_size": 16.5,
+      "font_color": "$ink",
+      "fill_color": "$paper",
+      "line_color": "$ink",
+      "line_width": 3,
+      "align": "left",
+      "valign": "top"
+    },
+    "tabla": {
+      "_uso": "Encabezado invertido (paper sobre ink), celdas ink sobre paper, sin zebra striping (fill_color parejo en todas las filas de datos).",
+      "font_family": "Space Grotesk",
+      "font_size": 18,
+      "font_color": "$ink",
+      "align": "left",
+      "fill_color": "$paper",
+      "header_fill_color": "$ink",
+      "header_font_color": "$paper"
+    },
+    "nodo": {
+      "_uso": "Caja de diagrama (tipo 'diagrama'). Sin relleno, borde 4px. Escribe el texto en MAYUSCULAS a mano.",
+      "font_family": "Archivo Black",
+      "font_size": 20,
+      "bold": false,
+      "font_color": "$ink",
+      "fill_color": null,
+      "line_color": "$ink",
+      "line_width": 3,
+      "align": "center",
+      "valign": "middle"
+    },
+    "conector": {
+      "_uso": "Flecha/linea entre nodos de un diagrama.",
+      "line_color": "$ink",
+      "line_width": 3,
+      "arrow_end": true
+    },
+    "ovalo": {
+      "_uso": "Ovalo de atributo, notacion de Chen (§8) -- unica forma redondeada permitida en todo el sistema. type: oval.",
+      "font_family": "Space Grotesk",
+      "font_size": 17,
+      "font_color": "$ink",
+      "fill_color": "$paper",
+      "line_color": "$ink",
+      "line_width": 3,
+      "align": "center",
+      "valign": "middle"
+    },
+    "invertido": {
+      "_uso": "Bloque sellado -- respuesta de pregunta-ejercicio, cifra de cierre, o termino a memorizar. Reservado, no usar como fondo por defecto.",
+      "font_family": "Space Grotesk",
+      "font_size": 28,
+      "bold": true,
+      "font_color": "$paper",
+      "fill_color": "$ink",
+      "line_color": null,
+      "align": "center",
+      "valign": "middle"
+    },
+    "cifra": {
+      "_uso": "Cifra destacada (pull number). Cambia font_color a un acento en el elemento si _estilo.md pide la variante con color.",
+      "font_family": "Archivo Black",
+      "font_size": 120,
+      "bold": false,
+      "font_color": "$ink",
+      "fill_color": null,
+      "line_color": null,
+      "align": "center",
+      "valign": "middle"
+    },
+    "pie": {
+      "_uso": "Pie / fuente bibliografica.",
+      "font_family": "Space Grotesk",
+      "font_size": 15,
+      "italic": false,
+      "font_color": "$muted",
+      "align": "left",
+      "valign": "top"
+    },
+    "foco": {
+      "_uso": "RESALTAR-Y-ATENUAR: el elemento protagonista. Maximo 2 acentos simultaneos por diapositiva (_estilo.md §2).",
+      "font_family": "Space Grotesk",
+      "bold": true,
+      "font_color": "$ink",
+      "fill_color": "$accent_foco",
+      "line_color": null,
+      "align": "center",
+      "valign": "middle"
+    },
+    "problema": {
+      "_uso": "MARCAR-ERROR / badge de lo incorrecto o inconsistente.",
+      "font_family": "Space Grotesk",
+      "bold": true,
+      "font_color": "$paper",
+      "fill_color": "$accent_problema",
+      "line_color": null,
+      "align": "center",
+      "valign": "middle"
+    },
+    "solucion": {
+      "_uso": "Badge de lo correcto/validado -- SIN relleno, solo marco de color (asi es en _estilo.md §2, a diferencia de 'foco'/'problema' que si van rellenos).",
+      "font_family": "Space Grotesk",
+      "bold": true,
+      "font_color": "$ink",
+      "fill_color": null,
+      "line_color": "$accent_solucion",
+      "line_width": 3,
+      "align": "center",
+      "valign": "middle"
+    },
+    "placeholder_tag": {
+      "_uso": "Etiqueta 'SCREENSHOT PENDIENTE' / 'GRAFICA PENDIENTE' (§7).",
+      "font_family": "Space Grotesk",
+      "font_size": 16,
+      "bold": true,
+      "font_color": "$paper",
+      "fill_color": "$accent_problema",
+      "line_color": null,
+      "align": "center",
+      "valign": "middle"
+    },
+    "placeholder_box": {
+      "_uso": "Contenedor del placeholder. _estilo.md pide borde PUNTEADO (unica excepcion a 'sin bordes punteados'); esta herramienta no soporta dash style, asi que queda solido -- si el matiz de 'temporal' importa, marca el borde como punteado a mano en LibreOffice despues.",
+      "font_family": "Space Grotesk",
+      "font_size": 20,
+      "italic": true,
+      "font_color": "$ink",
+      "fill_color": null,
+      "line_color": "$ink",
+      "line_width": 2.25,
+      "align": "left",
+      "valign": "top"
+    }
+  }
+}
