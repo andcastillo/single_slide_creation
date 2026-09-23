@@ -256,9 +256,9 @@ course deck (`AIW_Prompt_L02_clean_workflow.pptx`): colors and fonts read
 from that file's own theme XML, style choices (plain top-left titles, a
 cyan-bordered recap card, icon-on-colored-circle "badges") confirmed against
 its rendered slides. Pass it with `--theme theme_cisco.json`. Its own
-`_comment*` keys explain the card/badge composition patterns it expects;
-`jobs/code_with_ai_c1_lesson0/` is a full worked example (6 slides) built
-against it.
+`_comment*` keys explain the card/badge composition patterns it expects.
+Full worked examples built against it live in the Code with AI course repo
+(`cisco-ai-courses/Code_With_AI`), under `C1/design/slides/lesson-*/deck/`.
 
 `theme.json` is the "brand compliance" file: a plain JSON config (not CSS --
 see *Why JSON, not CSS* below) with a shared color palette and named style
