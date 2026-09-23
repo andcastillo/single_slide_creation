@@ -1,0 +1,36 @@
+[
+  {
+    "type": "rectangle",
+    "style": "title",
+    "x": 0.5,
+    "y": 0.4,
+    "width": 9.0,
+    "height": 1.0,
+    "text": "Team Status Update"
+  },
+  {
+    "type": "table",
+    "style": "table",
+    "x": 0.5,
+    "y": 1.9,
+    "width": 5.5,
+    "height": 2.0,
+    "rows": [
+      ["Task", "Status"],
+      ["API Integration", "Done"],
+      ["UI Redesign", "In Progress"],
+      ["Testing", "Not Started"]
+    ],
+    "col_widths": [3, 2]
+  },
+  {
+    "type": "oval",
+    "style": "callout",
+    "x": 6.9,
+    "y": 2.0,
+    "width": 2.2,
+    "height": 2.2,
+    "fill_color": "#2E7D32",
+    "text": "On Track"
+  }
+]

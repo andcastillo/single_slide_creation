@@ -4,4 +4,6 @@ __pycache__/
 examples/output_deck.pptx
 examples/themed_output_deck.pptx
 examples/diagram_output_deck.pptx
+examples/notes_output_deck.pptx
 examples/generated_deck.pptx
+.env

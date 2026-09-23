@@ -22,6 +22,7 @@ you can call add_slide()/save_deck() again later in a fresh script -- any
 manual edits you made in the LibreOffice window in between are preserved.
 """
 
+import datetime
 import os
 import re
 import tempfile
@@ -124,12 +125,100 @@ def get_page_size_in(doc) -> tuple[float, float]:
     return to_inches(page.Width), to_inches(page.Height)
 
 
+_NOTES_SHAPE_TYPE = "com.sun.star.presentation.NotesShape"
+
+
+def _notes_shape(page):
+    """Return the speaker-notes text shape on `page`'s notes page, or None.
+    Confirmed present by default even on a BLANK_LAYOUT slide."""
+    notes_page = page.NotesPage
+    for i in range(notes_page.Count):
+        shape = notes_page.getByIndex(i)
+        if shape.ShapeType == _NOTES_SHAPE_TYPE:
+            return shape
+    return None
+
+
+def set_notes(doc, page, text: str):
+    """Set `page`'s speaker notes to `text` (plain text; newlines become
+    separate paragraphs), replacing whatever notes it had. Creates the
+    notes text shape if the notes page somehow lacks one. Exported to
+    .pptx as a standard notesSlide, shown in PowerPoint's presenter view.
+    """
+    shape = _notes_shape(page)
+    if shape is None:
+        shape = doc.createInstance(_NOTES_SHAPE_TYPE)
+        page.NotesPage.add(shape)
+    shape.String = text
+
+
+def get_notes(page) -> str:
+    """Return `page`'s speaker notes as plain text ("" if none)."""
+    shape = _notes_shape(page)
+    return shape.String if shape is not None else ""
+
+
+def add_comment(page, text: str, author: str = "slidebuilder", initials: str | None = None):
+    """Attach a review comment (an Impress "annotation") holding `text` to
+    `page`, pinned near its top-right corner. Exported to .pptx as a
+    (legacy-format) slide comment.
+    """
+    now = datetime.datetime.now()
+    stamp = uno.createUnoStruct("com.sun.star.util.DateTime")
+    stamp.Year, stamp.Month, stamp.Day = now.year, now.month, now.day
+    stamp.Hours, stamp.Minutes, stamp.Seconds = now.hour, now.minute, now.second
+
+    annotation = page.createAndInsertAnnotation()
+    annotation.Author = author
+    annotation.Initials = initials if initials is not None else "".join(w[0] for w in author.split()).upper()[:3]
+    annotation.DateTime = stamp
+    # Position is in millimeters (page.Width is in 1/100 mm).
+    annotation.Position = uno.createUnoStruct(
+        "com.sun.star.geometry.RealPoint2D", max(page.Width / 100 - 15.0, 0.0), 5.0
+    )
+    annotation.TextRange.String = text
+    return annotation
+
+
+def _move_notes_and_comments(doc, src, dst):
+    """Move `src`'s speaker notes and comments onto `dst`.
+
+    Notes move as plain text, so formatting applied to them by hand in the
+    GUI (bold, etc.) is lost. Moving the notes shape itself instead was
+    tried and is NOT reliable: confirmed, right after a Layout change the
+    moved shape can silently turn from a notes placeholder into a plain
+    text shape, which is then not exported as speaker notes at all.
+    Comments have no move API, so each is recreated on `dst` and removed
+    from `src`.
+    """
+    text = get_notes(src)
+    if text:
+        set_notes(doc, dst, text)
+        _notes_shape(src).String = ""
+
+    annotations = []
+    it = src.createAnnotationEnumeration()
+    while it.hasMoreElements():
+        annotations.append(it.nextElement())
+    for old in annotations:
+        new = dst.createAndInsertAnnotation()
+        new.Author = old.Author
+        new.Initials = old.Initials
+        new.DateTime = old.DateTime
+        new.Position = old.Position
+        new.TextRange.String = old.TextRange.String
+        src.removeAnnotation(old)
+
+
 def add_slide(
     doc,
     elements: list[dict],
     is_new: bool = False,
     index: int | None = None,
     theme: dict | str | None = None,
+    notes: str | None = None,
+    comment: str | None = None,
+    comment_author: str = "slidebuilder",
 ):
     """Append a slide built from `elements` to `doc` and return the new page.
 
@@ -143,6 +232,10 @@ def add_slide(
     present) is resolved against theme["styles"] and "$color" tokens are
     resolved against theme["colors"] before the element is created -- see
     slidebuilder/theme.py.
+
+    `notes`, if non-empty, becomes the slide's speaker notes (see
+    set_notes()); `comment`, if non-empty, is attached as a review comment
+    by `comment_author` (see add_comment()). None or "" adds nothing.
     """
     if isinstance(theme, str):
         theme = load_theme(theme)
@@ -170,6 +263,9 @@ def add_slide(
         # then swapping the two pages' shapes so the new page ends up
         # holding the *old* first page's content and vice versa -- i.e.
         # the freshly generated slide ends up at index 0 as requested.
+        # Its speaker notes and comments have to move along with the
+        # shapes too -- confirmed: otherwise they stay behind on index 0,
+        # attached to the new slide instead of the one they were written for.
         old_first = pages.getByIndex(0)
         pages.insertNewByIndex(0)
         new_page = pages.getByIndex(1)
@@ -177,6 +273,7 @@ def add_slide(
             old_first.remove(shape)
             new_page.add(shape)
         new_page.Layout = old_first.Layout
+        _move_notes_and_comments(doc, old_first, new_page)
         page = old_first
     else:
         # insertNewByIndex(n) lands the new page at n+1, so to land it AT
@@ -190,6 +287,11 @@ def add_slide(
         if theme is not None:
             el = apply_theme(theme, el)
         create_element(doc, page, el)
+
+    if notes:
+        set_notes(doc, page, notes)
+    if comment:
+        add_comment(page, comment, author=comment_author)
 
     return page
 
@@ -264,6 +366,9 @@ def create_or_append_slide(
     theme: dict | str | None = None,
     width_in: float = DEFAULT_SLIDE_WIDTH_IN,
     height_in: float = DEFAULT_SLIDE_HEIGHT_IN,
+    notes: str | None = None,
+    comment: str | None = None,
+    comment_author: str = "slidebuilder",
 ):
     """Convenience one-shot wrapper: open (or create) the deck at `path`,
     append a slide built from `elements` (optionally styled via `theme`),
@@ -273,10 +378,15 @@ def create_or_append_slide(
     docstring; in short, they only take effect if `path` doesn't exist yet
     (a brand-new deck), never overriding an existing deck's actual size.
 
+    notes/comment/comment_author are passed straight to add_slide().
+
     The document is left open in the LibreOffice window (not closed) so you
     can keep inspecting/editing it, or call this again to add more slides.
     """
     doc, is_new = open_deck(desktop, path, width_in=width_in, height_in=height_in)
-    page = add_slide(doc, elements, is_new=is_new, index=index, theme=theme)
+    page = add_slide(
+        doc, elements, is_new=is_new, index=index, theme=theme,
+        notes=notes, comment=comment, comment_author=comment_author,
+    )
     save_deck(doc, path)
     return doc, page

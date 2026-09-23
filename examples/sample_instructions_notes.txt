@@ -1,0 +1,20 @@
+Create a slide titled "Team Status Update".
+
+Below the title on the left side, add a table with two columns, "Task" and
+"Status", listing three rows: "API Integration" is "Done", "UI Redesign" is
+"In Progress", and "Testing" is "Not Started".
+
+On the right side of the slide, add a green circular callout with the text
+"On Track".
+
+=== SPEAKER NOTES ===
+Start with the headline: we are on track for the release date.
+
+API Integration is finished and already running in staging.
+UI Redesign is about 60% done; the new dashboard ships next sprint.
+Testing starts once the redesign is merged -- ask QA to confirm their dates.
+
+=== COMMENT ===
+Animations to build by hand:
+1. Table appears on click, one row at a time.
+2. "On Track" callout zooms in after the last row.

@@ -493,6 +493,66 @@ into a different chat UI to test another model by hand); `--model`,
 `--base-url`, `--max-tokens`, `--timeout` tune the LLM call itself -- see
 `generate_slide.py --help`.
 
+### Speaker notes and comments
+
+An instructions file can carry, after the slide description, sections
+that are applied to the slide **verbatim** -- never sent to the LLM. Each
+starts with a marker line:
+
+```
+TITLE: "MONOVALUADO VS. MULTIVALUADO"
+The slide will show ...              <- the slide description (sent to the LLM)
+
+=== SPEAKER NOTES ===
+Empiecen preguntando: ¿cuántos teléfonos tienen ustedes?
+
+La doble elipse es la clave visual; señálenla.
+
+=== COMMENT ===
+Animación: primero la elipse simple al clic, luego la doble con fade.
+```
+
+- `=== SPEAKER NOTES ===` becomes the slide's speaker notes (a standard
+  `.pptx` notes slide, shown in PowerPoint's presenter view). Plain text;
+  each line is its own paragraph.
+- `=== COMMENT ===` becomes a review comment pinned near the slide's
+  top-right corner -- e.g. a reminder of the animations to build by hand.
+  `--comment-author` sets the name shown on it (default `slidebuilder`).
+
+Try it without an LLM -- `examples/sample_instructions_notes.txt` ships
+with a ready-made element cache next to it:
+
+```bash
+/usr/bin/python3 generate_slide.py examples/sample_instructions_notes.txt --use-cache
+```
+
+Then check View > Notes in Impress for the notes, and the comment marker
+near the slide's top-right corner. `examples/notes_example.py` does the
+same through the library API.
+
+Both are optional; a section that's absent or empty adds nothing. Marker
+names are case-insensitive, but an unknown one (e.g. a typo like
+`=== SPEAKR NOTES ===`) is an error rather than silently becoming part of
+the prompt. `--no-notes` / `--no-comments` ignore the sections for one
+run -- e.g. to build a clean copy to share with students.
+
+Because these sections never reach the LLM, they cost no prompt tokens,
+come through exactly as written, and can be edited and re-applied with
+`--use-cache` without another LLM call. Parsing lives in
+`slidebuilder/sections.py`; the library-level equivalents are
+`add_slide(..., notes=..., comment=...)`, `set_notes()`, `get_notes()`
+and `add_comment()` in `slidebuilder/builder.py`.
+
+Confirmed directly, both live and after reloading the saved `.pptx` from
+disk: notes (including multi-line and non-ASCII text) and comments land
+on the right slide, including with `--after 0`. That case needed its own
+fix -- `add_slide()` implements it by swapping page contents, and the old
+first slide's notes and comments now move along with its shapes. Notes
+move as plain text there, so formatting added to them by hand in the GUI
+is lost in that one case. Comments are exported in the legacy `.pptx`
+comment format (`ppt/comments/`) -- not yet checked how PowerPoint 365
+(which uses newer threaded comments) or Google Slides display them.
+
 ### How the prompt is built
 
 `slidebuilder/prompt.py`'s `build_system_prompt()` assembles the prompt
@@ -537,10 +597,19 @@ leaving a half-built slide in your document.
   connector lines between icons and a process box.
 - `examples/sample_instructions.txt` -- example natural-language slide
   description for `generate_slide.py`.
+- `examples/sample_instructions_notes.txt` -- the same slide with
+  `=== SPEAKER NOTES ===` and `=== COMMENT ===` sections, plus a
+  ready-made element cache (`sample_instructions_notes.json`) so it runs
+  with `--use-cache`, no LLM needed.
+- `examples/notes_example.py` -- speaker notes and a comment via the
+  library API (`create_or_append_slide(..., notes=..., comment=...)`).
 - `generate_slide.py` -- CLI: instructions file -> local LLM -> validated
   elements -> slide in the running LibreOffice session.
 - `slidebuilder/prompt.py` -- builds the system prompt for
   `generate_slide.py` from the schema, `theme.json`, and `icons/`.
+- `slidebuilder/sections.py` -- splits an instructions file into the
+  slide description and its `=== SPEAKER NOTES ===` / `=== COMMENT ===`
+  sections.
 - `slidebuilder/llm.py` -- talks to the local LLM's OpenAI-compatible API,
   parses/validates its response.
 - `slidebuilder/connection.py` -- connect to (or launch) a LibreOffice

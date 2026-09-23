@@ -35,6 +35,20 @@ the instructions file (instructions.txt -> instructions.json). Edit that
 file by hand and re-run with --use-cache to replay it without calling the
 LLM again -- useful for debugging generation issues or hand-tweaking a
 slide's elements directly.
+
+The instructions file may also carry sections that are applied to the
+slide verbatim and never sent to the LLM (see slidebuilder/sections.py):
+
+    === SPEAKER NOTES ===
+    ...becomes the slide's speaker notes
+
+    === COMMENT ===
+    ...becomes a review comment on the slide (e.g. animations to build)
+
+Absent or empty sections add nothing. --no-notes / --no-comments ignore
+them for one run (e.g. to build a clean copy to share). Since sections
+never touch the LLM, edit them and re-run with --use-cache to apply the
+change without another LLM call.
 """
 
 import argparse
@@ -48,6 +62,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from slidebuilder import add_slide, connect, get_page_size_in, load_theme, open_deck, save_deck
 from slidebuilder.llm import DEFAULT_BASE_URL, DEFAULT_MODEL, clamp_to_canvas, generate_elements, validate_elements
 from slidebuilder.prompt import DEFAULT_SLIDE_HEIGHT_IN, DEFAULT_SLIDE_WIDTH_IN, build_system_prompt
+from slidebuilder.sections import COMMENT, SPEAKER_NOTES, parse_instructions
 
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_THEME_PATH = os.path.join(REPO_ROOT, "theme.json")
@@ -75,6 +90,9 @@ def main():
     parser.add_argument("--show-prompt", action="store_true", help="Print the system prompt and exit, without calling the LLM")
     parser.add_argument("--dry-run", action="store_true", help="Print the generated elements as JSON, but don't touch LibreOffice")
     parser.add_argument("--use-cache", action="store_true", help="Skip the LLM call and load the element list from the cache file instead (see below) -- lets you re-run against a hand-edited or previously generated element list. Errors out if that file doesn't exist yet.")
+    parser.add_argument("--no-notes", action="store_true", help="Ignore the instructions file's '=== SPEAKER NOTES ===' section for this run (the slide gets no speaker notes)")
+    parser.add_argument("--no-comments", action="store_true", help="Ignore the instructions file's '=== COMMENT ===' section for this run (the slide gets no comment)")
+    parser.add_argument("--comment-author", default="slidebuilder", help="Author name shown on the slide comment (default: slidebuilder)")
     args = parser.parse_args()
 
     # Every real LLM call's parsed element list is written here (same path
@@ -101,9 +119,17 @@ def main():
         return
 
     with open(args.instructions_file, "r", encoding="utf-8") as f:
-        instructions = f.read().strip()
+        try:
+            sections = parse_instructions(f.read())
+        except ValueError as e:
+            parser.error(f"{args.instructions_file}: {e}")
+    # Only the body is the slide description the LLM designs from; the
+    # other sections are applied to the slide verbatim, below.
+    instructions = sections["body"]
     if not instructions:
-        parser.error(f"{args.instructions_file} is empty")
+        parser.error(f"{args.instructions_file} has no slide description (before any '=== ... ===' section)")
+    notes = None if args.no_notes else sections[SPEAKER_NOTES]
+    comment = None if args.no_comments else sections[COMMENT]
 
     doc, is_new = None, None
     if not args.dry_run:
@@ -173,6 +199,10 @@ def main():
 
     if args.dry_run:
         print(json.dumps(elements, indent=2))
+        if notes:
+            print(f"\n--- speaker notes ---\n{notes}")
+        if comment:
+            print(f"\n--- comment ---\n{comment}")
         return
 
     index = None
@@ -183,9 +213,14 @@ def main():
             parser.error(f"--after {args.after} is out of range for a deck with {doc.DrawPages.Count} slide(s)")
         index = args.after
 
-    add_slide(doc, elements, is_new=is_new, index=index, theme=theme)
+    add_slide(
+        doc, elements, is_new=is_new, index=index, theme=theme,
+        notes=notes, comment=comment, comment_author=args.comment_author,
+    )
     save_deck(doc, args.deck)
-    print(f"Slide added. Saved to {args.deck} ({doc.DrawPages.Count} slide(s) total).")
+    extras = [label for label, text in (("speaker notes", notes), ("a comment", comment)) if text]
+    with_extras = f" with {' and '.join(extras)}" if extras else ""
+    print(f"Slide added{with_extras}. Saved to {args.deck} ({doc.DrawPages.Count} slide(s) total).")
 
 
 if __name__ == "__main__":
