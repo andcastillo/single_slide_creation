@@ -1,0 +1,158 @@
+{
+  "_comment": "Cisco Networking Academy style, reverse-engineered directly from AIW_Prompt_L02_clean_workflow.pptx (Eddy's 'Prompt like an engineer' course deck) -- not placeholders. Colors come from that deck's ppt/theme/theme1.xml <a:clrScheme> (Custom 1) and were cross-checked against actual fill-color usage counts across its 30 slides. Fonts come from that same theme's <a:fontScheme> ('CiscoSansTT ExtraLight' / 'CiscoSansTT Light') -- these are licensed Cisco fonts and will NOT be installed on a machine outside Cisco's network; LibreOffice/PowerPoint will silently substitute a fallback (Arial/Calibri) if missing, which is fine for drafting but check before a real recording.",
+  "_comment_titles": "Source deck's content-slide titles are plain text, top-left, NOT a filled banner -- confirmed visually across multiple slides. 'title_banner' (filled navy, centered, white text) is kept separately for a section-divider/title-card use, matching the source deck's actual title slide.",
+  "_comment_card": "The recurring left-side 'recap card' seen on nearly every content slide in the source deck: a cyan-bordered rounded rectangle, a short bold cyan header, and 1-3 lines of black body text, with an optional black icon near the bottom. Because a rectangle can only hold ONE text run, build a card as 3 stacked elements: one 'card' (the box, no text), one 'card_title' text on top, one 'card_body' text below it -- see jobs/code_with_ai_c1_lesson0/ for a worked example.",
+  "_comment_badges": "The source deck's other recurring pattern: a small icon centered on a solid-color circle ('badge'), often clustered in groups of 2-5, one accent color per badge. Build one as 2 stacked elements: an 'oval' with the matching badge_* style (no text), then an 'image' (icon=...) centered on top, sized ~55-65% of the circle's diameter. Pick the badge color for what the icon represents, not decoratively -- the source deck is consistent about this (e.g. red badges only ever mean stop/error, green only success).",
+
+  "colors": {
+    "navy": "#0D274D",
+    "cyan": "#00BCEB",
+    "blue": "#0051AF",
+    "amber": "#FBAB2C",
+    "green": "#74BF4B",
+    "red": "#E3241B",
+    "purple": "#7030A0",
+    "grey_light": "#E2E2E2",
+    "grey_text": "#414244",
+    "white": "#FFFFFF",
+    "black": "#000000",
+    "palette": ["#0D274D", "#00BCEB", "#0051AF", "#FBAB2C", "#74BF4B", "#E3241B", "#7030A0"]
+  },
+
+  "styles": {
+    "title": {
+      "font_family": "CiscoSansTT ExtraLight",
+      "font_size": 36,
+      "bold": false,
+      "font_color": "$grey_text",
+      "fill_color": null,
+      "line_color": null,
+      "align": "left",
+      "valign": "top"
+    },
+    "title_banner": {
+      "font_family": "CiscoSansTT ExtraLight",
+      "font_size": 40,
+      "bold": false,
+      "font_color": "$white",
+      "fill_color": "$navy",
+      "line_color": null,
+      "align": "center",
+      "valign": "middle"
+    },
+
+    "card": {
+      "fill_color": "$white",
+      "line_color": "$cyan",
+      "line_width": 1.5
+    },
+    "card_title": {
+      "font_family": "CiscoSansTT Light",
+      "font_size": 16,
+      "bold": true,
+      "font_color": "$cyan",
+      "align": "left",
+      "valign": "top"
+    },
+    "card_body": {
+      "font_family": "CiscoSansTT Light",
+      "font_size": 14,
+      "bold": false,
+      "font_color": "$black",
+      "align": "left",
+      "valign": "top"
+    },
+
+    "subtitle": {
+      "font_family": "CiscoSansTT Light",
+      "font_size": 20,
+      "bold": true,
+      "font_color": "$cyan",
+      "align": "left",
+      "valign": "top"
+    },
+    "body": {
+      "font_family": "CiscoSansTT Light",
+      "font_size": 16,
+      "bold": false,
+      "font_color": "$grey_text",
+      "align": "left",
+      "valign": "top"
+    },
+    "caption": {
+      "font_family": "CiscoSansTT Light",
+      "font_size": 11,
+      "italic": false,
+      "font_color": "$grey_text",
+      "align": "left",
+      "valign": "top"
+    },
+
+    "badge_navy": { "fill_color": "$navy", "line_color": null },
+    "badge_cyan": { "fill_color": "$cyan", "line_color": null },
+    "badge_amber": { "fill_color": "$amber", "line_color": null },
+    "badge_green": { "fill_color": "$green", "line_color": null },
+    "badge_red": { "fill_color": "$red", "line_color": null },
+    "badge_purple": { "fill_color": "$purple", "line_color": null },
+
+    "chip_amber": {
+      "font_family": "CiscoSansTT Light",
+      "font_size": 16,
+      "bold": false,
+      "font_color": "$white",
+      "fill_color": "$amber",
+      "line_color": null,
+      "align": "center",
+      "valign": "middle"
+    },
+    "chip_grey": {
+      "font_family": "CiscoSansTT Light",
+      "font_size": 14,
+      "bold": false,
+      "font_color": "$grey_text",
+      "fill_color": "$grey_light",
+      "line_color": null,
+      "align": "center",
+      "valign": "middle"
+    },
+
+    "table": {
+      "font_family": "CiscoSansTT Light",
+      "font_size": 13,
+      "font_color": "$grey_text",
+      "align": "left",
+      "fill_color": "$white",
+      "header_fill_color": "$navy",
+      "header_font_color": "$white"
+    },
+    "process": {
+      "font_family": "CiscoSansTT Light",
+      "font_size": 14,
+      "bold": true,
+      "font_color": "$navy",
+      "fill_color": "$white",
+      "line_color": "$navy",
+      "line_width": 1.5,
+      "align": "center",
+      "valign": "middle"
+    },
+    "connector": {
+      "line_color": "$blue",
+      "line_width": 2.25,
+      "arrow_end": true
+    },
+    "connector_cyan": {
+      "line_color": "$cyan",
+      "line_width": 2.25,
+      "arrow_end": true
+    },
+
+    "footer_logo_caption": {
+      "font_family": "CiscoSansTT Light",
+      "font_size": 10,
+      "font_color": "$grey_text",
+      "align": "left",
+      "valign": "middle"
+    }
+  }
+}

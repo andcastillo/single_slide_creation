@@ -35,6 +35,19 @@ _ICON_HINTS = {
     "cloud": "a cloud (cloud service/storage)",
     "chat_icon": "a speech bubble with dots (a chat message)",
     "chatbot": "a small robot head (an AI/chatbot)",
+    "computer_monitor": "a plain monitor/screen outline (Cisco AIW style)",
+    "table_grid": "a 3x3 spreadsheet/grid outline (Cisco AIW style)",
+    "code_window": "a browser-chrome window containing </> (Cisco AIW style)",
+    "lock": "a padlock, filled (Cisco AIW style)",
+    "cloud_sync": "a monitor with two curved arrows syncing to a cloud (Cisco AIW style)",
+    "cursor": "a filled mouse-pointer arrow (Cisco AIW style)",
+    "puzzle": "four interlocking puzzle pieces (Cisco AIW style)",
+    "wheel": "a ship's steering wheel -- used for 'control'/'process' (Cisco AIW style)",
+    "clipboard_check": "a clipboard listing a mix of checkmarks and X's (Cisco AIW style)",
+    "warning": "an amber/orange triangle with an exclamation mark (Cisco AIW style)",
+    "check_mark": "a bold standalone checkmark, no circle/box around it (Cisco AIW style)",
+    "x_mark": "a bold standalone X, no circle/box around it (Cisco AIW style)",
+    "file_outline": "a plain page/file outline with a folded corner, no fill, no background circle (Cisco AIW style) -- use this, not 'document', when compositing onto a colored badge circle yourself",
 }
 
 _ELEMENT_SCHEMA = """\

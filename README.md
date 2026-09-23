@@ -248,6 +248,18 @@ arrow placement -- is always preserved.)
 
 ## Style / theme definitions (`theme.json`)
 
+Three theme files ship in this repo: `theme.json` (generic placeholder,
+unverified colors -- see below), `theme_brutalista.json` (a different
+project's custom style), and `theme_cisco.json` -- a real Cisco Networking
+Academy style, reverse-engineered directly from an actual Eddy-authored
+course deck (`AIW_Prompt_L02_clean_workflow.pptx`): colors and fonts read
+from that file's own theme XML, style choices (plain top-left titles, a
+cyan-bordered recap card, icon-on-colored-circle "badges") confirmed against
+its rendered slides. Pass it with `--theme theme_cisco.json`. Its own
+`_comment*` keys explain the card/badge composition patterns it expects;
+`jobs/code_with_ai_c1_lesson0/` is a full worked example (6 slides) built
+against it.
+
 `theme.json` is the "brand compliance" file: a plain JSON config (not CSS --
 see *Why JSON, not CSS* below) with a shared color palette and named style
 presets (`title`, `subtitle`, `body`, `caption`, `callout`, `table`,
