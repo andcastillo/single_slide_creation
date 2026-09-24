@@ -177,6 +177,10 @@ def main():
             )
             system_prompt = prompt_for(slide_width_in, slide_height_in)
 
+    #print("==================")
+    #print(system_prompt)
+    #print("==================")
+    #print(instructions)
     if args.use_cache:
         if not os.path.isfile(cache_path):
             parser.error(f"--use-cache given but {cache_path} doesn't exist yet -- run once without it first")

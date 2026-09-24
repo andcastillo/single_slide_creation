@@ -415,10 +415,11 @@ Now you can call the tool using:
 ```bash
 $HOME/libreoffice-python/Resources/python generate_slide.py examples/sample_instructions_llm_notes.txt \
     --deck examples/generated_deck.pptx \
-    --theme theme_brutalista.json \
-    --base-url http:192.168.19.8:1234/v1 \                              
-    --model qwen/qwen3.8-27b
-    --max-tokens 8000
+    --theme theme_cisco.json \
+    --base-url http://192.168.19.8:1234/v1 \
+    --model qwen/qwen3.8-27b \
+    --max-tokens 8000 \
+    --use-cache
 ```bash
 
 (`--api-key` also exists directly, and takes priority over `LLM_API_KEY`
