@@ -554,8 +554,10 @@ fine); and `--after 0` builds the slide at the end and then moves it to
 the front with Impress's own "Move Slide to Start" command, because
 editing the on-screen first slide in place intermittently crashed
 LibreOffice. Comments are exported in the legacy `.pptx`
-comment format (`ppt/comments/`) -- not yet checked how PowerPoint 365
-(which uses newer threaded comments) or Google Slides display them.
+comment format (`ppt/comments/`). Confirmed directly: the example decks
+(`examples/llm_notes_demo.pptx`, `examples/generated_deck.pptx`) show
+both the speaker notes and the comments correctly in Microsoft Office
+and OnlyOffice on macOS. Google Slides hasn't been checked yet.
 
 #### Letting the LLM write them (`--llm-notes`, `--llm-comments`)
 
