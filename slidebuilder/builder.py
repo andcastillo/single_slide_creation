@@ -210,6 +210,28 @@ def _move_notes_and_comments(doc, src, dst):
         src.removeAnnotation(old)
 
 
+def _move_page_first(doc, page) -> bool:
+    """Move `page` to the front of the deck with Impress's own "Move Slide
+    to Start" command, dispatched to the document's window (the UNO API has
+    no page-reorder method). The page's shapes, speaker notes and comments
+    all move with it, and the window ends up showing it. Returns whether
+    `page` actually ended up first.
+    """
+    try:
+        controller = doc.getCurrentController()
+        controller.CurrentPage = page
+        url = uno.createUnoStruct("com.sun.star.util.URL")
+        url.Complete = url.Main = ".uno:MovePageFirst"
+        url.Protocol, url.Path = ".uno:", "MovePageFirst"
+        dispatcher = controller.getFrame().queryDispatch(url, "", 0)
+        if dispatcher is None:
+            return False
+        dispatcher.dispatch(url, ())
+    except Exception:
+        return False
+    return doc.DrawPages.getByIndex(0) == page
+
+
 def add_slide(
     doc,
     elements: list[dict],
@@ -222,8 +244,8 @@ def add_slide(
 ):
     """Append a slide built from `elements` to `doc` and return the new page.
 
-    If is_new is True (freshly created presentation), the existing default
-    blank page is reused instead of inserting an extra one after it.
+    If is_new is True (freshly created presentation), the slide replaces
+    the default blank page it starts with, instead of landing after it.
     If `index` is given, the slide is inserted at that position instead of
     the end.
 
@@ -242,11 +264,21 @@ def add_slide(
 
     pages = doc.DrawPages
 
+    placeholder = None
+    move_to_front = False
+
     if is_new and pages.Count == 1:
-        # Reuse the single default page a freshly-created presentation
-        # starts with (it may already carry title/content placeholder
-        # shapes -- setting Layout below clears those).
-        page = pages.getByIndex(0)
+        # Build on a fresh page after the default blank page a freshly-
+        # created presentation starts with, then remove that default page
+        # once done -- rather than reusing it. Reported directly: reusing
+        # it (the page on screen while its notes are written), the saved
+        # file had the speaker notes, but the live window then replaced
+        # them with the literal text "Click to add Notes"; later slides,
+        # built on fresh pages, were fine. The trigger couldn't be
+        # reproduced here, so this avoids the situation instead.
+        placeholder = pages.getByIndex(0)
+        pages.insertNewByIndex(0)
+        page = pages.getByIndex(1)
     elif index is None:
         # insertNewByIndex(n) lands the new page at n+1 (see below) --
         # but at this upper boundary (n == Count, one past the last valid
@@ -255,7 +287,21 @@ def add_slide(
         insert_at = pages.Count
         pages.insertNewByIndex(insert_at)
         page = pages.getByIndex(insert_at)
+    elif index == 0 and doc.getCurrentController() is not None:
+        # There's no n for which insertNewByIndex(n) lands a page AT index
+        # 0 (see below), so build the slide as a plain append -- off
+        # screen -- and move it to the front once it's complete.
+        # Confirmed: the swap workaround below edits the old first slide
+        # in place, including removing and re-adding comments on it, and
+        # when that slide is the one on screen in a visible window,
+        # LibreOffice intermittently crashed doing so.
+        insert_at = pages.Count
+        pages.insertNewByIndex(insert_at)
+        page = pages.getByIndex(insert_at)
+        move_to_front = True
     elif index == 0:
+        # Fallback for a document without a window to send the move
+        # command to.
         # insertNewByIndex(n) always lands the new page at n+1, for every
         # n (including 0, and even -1 which just clamps to append) -- so
         # there's no n that lands a page AT index 0. Work around it by
@@ -292,6 +338,14 @@ def add_slide(
         set_notes(doc, page, notes)
     if comment:
         add_comment(page, comment, author=comment_author)
+
+    if placeholder is not None:
+        pages.remove(placeholder)
+    if move_to_front and not _move_page_first(doc, page):
+        raise RuntimeError(
+            "Couldn't move the new slide to the front of the deck; it was "
+            "left at the end instead (not saved yet)."
+        )
 
     return page
 

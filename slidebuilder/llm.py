@@ -343,7 +343,7 @@ def clamp_to_canvas(
     return adjusted, notes
 
 
-def generate_elements(
+def generate_response(
     system_prompt: str,
     instructions: str,
     model: str = DEFAULT_MODEL,
@@ -353,12 +353,13 @@ def generate_elements(
     timeout: float = 300.0,
     max_tokens: int | None = 4000,
     enable_thinking: bool | None = None,
-) -> tuple[list, str]:
-    """Call the LLM and return (elements, raw_response_text). Raises
-    ValueError if the response can't be parsed into a JSON object with an
-    'elements' array. Does NOT raise on schema problems (missing fields
-    etc.) -- check validate_elements(elements) yourself; this just gets you
-    parsed data to check.
+) -> tuple[dict, str]:
+    """Call the LLM and return (response_object, raw_response_text) -- the
+    whole parsed JSON object, i.e. "elements" plus whatever else the
+    prompt asked for (e.g. "notes"/"comment", see
+    prompt.build_system_prompt()). Raises ValueError if the response can't
+    be parsed into a JSON object with an 'elements' key. Does NOT check
+    anything beyond that -- see validate_elements() and text_field().
     """
     raw = call_llm(
         system_prompt, instructions, model=model, base_url=base_url, api_key=api_key,
@@ -366,6 +367,35 @@ def generate_elements(
         enable_thinking=enable_thinking,
     )
     obj = extract_json_object(raw)
-    if "elements" not in obj:
+    if not isinstance(obj, dict) or "elements" not in obj:
         raise ValueError(f"LLM response JSON has no 'elements' key: {obj!r}\n--- raw output ---\n{raw}")
+    return obj, raw
+
+
+def generate_elements(
+    system_prompt: str,
+    instructions: str,
+    **kwargs,
+) -> tuple[list, str]:
+    """Like generate_response(), but return just (elements, raw_response_text)."""
+    obj, raw = generate_response(system_prompt, instructions, **kwargs)
     return obj["elements"], raw
+
+
+def text_field(obj: dict, key: str) -> tuple[str | None, str | None]:
+    """Read an optional plain-text field (e.g. "notes") from a response
+    object. Returns (text, problem): text is the stripped string, or None
+    if it's missing, empty, or not a string; problem is a human-readable
+    reason when it was expected but unusable, else None. A missing or bad
+    field is reported rather than raised -- the slide itself is still
+    fine without it.
+    """
+    value = obj.get(key)
+    if value is None:
+        return None, f"the model didn't return any {key!r}"
+    if not isinstance(value, str):
+        return None, f"the model's {key!r} is a {type(value).__name__}, not a string -- ignored"
+    value = value.strip()
+    if not value:
+        return None, f"the model returned an empty {key!r}"
+    return value, None

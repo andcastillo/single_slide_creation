@@ -545,13 +545,60 @@ and `add_comment()` in `slidebuilder/builder.py`.
 
 Confirmed directly, both live and after reloading the saved `.pptx` from
 disk: notes (including multi-line and non-ASCII text) and comments land
-on the right slide, including with `--after 0`. That case needed its own
-fix -- `add_slide()` implements it by swapping page contents, and the old
-first slide's notes and comments now move along with its shapes. Notes
-move as plain text there, so formatting added to them by hand in the GUI
-is lost in that one case. Comments are exported in the legacy `.pptx`
+on the right slide, including with `--after 0`. Two cases needed care in
+a visible LibreOffice window -- both are about not editing the slide
+that's on screen: the first slide of a new deck is built on a fresh page
+(the default blank one is removed afterwards), because writing notes
+onto the on-screen page lost them in the live window (the saved file was
+fine); and `--after 0` builds the slide at the end and then moves it to
+the front with Impress's own "Move Slide to Start" command, because
+editing the on-screen first slide in place intermittently crashed
+LibreOffice. Comments are exported in the legacy `.pptx`
 comment format (`ppt/comments/`) -- not yet checked how PowerPoint 365
 (which uses newer threaded comments) or Google Slides display them.
+
+#### Letting the LLM write them (`--llm-notes`, `--llm-comments`)
+
+With a capable enough model, the LLM can write these itself, in the same
+call that designs the slide:
+
+```bash
+/usr/bin/python3 generate_slide.py examples/sample_instructions_llm_notes.txt \
+    --llm-notes --llm-comments --max-tokens 8000
+```
+
+- `--llm-notes` asks for speaker notes: what the presenter says (not a
+  copy of the slide's text), as a few plain-text paragraphs in the
+  slide's own language.
+- `--llm-comments` asks for an animation plan as the comment: a numbered
+  build order (which element appears when, with simple effects) to set
+  up by hand.
+
+What you wrote always wins: the LLM is only asked for a section the
+instructions file doesn't have, and a present-but-empty section means
+"none for this slide" (so do `--no-notes` / `--no-comments`). If the
+model leaves a field out or returns something that isn't a string,
+that's a warning and the slide is built without it.
+
+Without these flags the system prompt is byte-for-byte what it was
+before they existed, so a small local model still only handles the
+graphics. With them, the prompt gains a "Speaker notes and comment"
+section and the response object gains `"notes"` / `"comment"` strings
+next to `"elements"` -- see it with `--show-prompt --llm-notes
+--llm-comments`. The extra output needs extra tokens; raise
+`--max-tokens` if a reasoning model gets cut off.
+
+The cache then stores the whole response,
+`{"elements": [...], "notes": "...", "comment": "..."}`, instead of a
+bare element list (both formats load), and `--use-cache` replays the
+LLM's notes/comment only when given the same flags.
+
+`examples/sample_instructions_llm_notes.txt` is a medium-complexity
+slide (a one-to-many relationship in an ER diagram) with no notes or
+comment sections, made for trying this out. Confirmed working end to
+end with a local model (notes and animation plan in Spanish, on the
+slide in the saved `.pptx`); the flag/section/cache rules were also
+checked against a stand-in OpenAI-compatible server.
 
 ### How the prompt is built
 
@@ -601,6 +648,8 @@ leaving a half-built slide in your document.
   `=== SPEAKER NOTES ===` and `=== COMMENT ===` sections, plus a
   ready-made element cache (`sample_instructions_notes.json`) so it runs
   with `--use-cache`, no LLM needed.
+- `examples/sample_instructions_llm_notes.txt` -- a slide with no notes
+  or comment sections, for trying `--llm-notes` / `--llm-comments`.
 - `examples/notes_example.py` -- speaker notes and a comment via the
   library API (`create_or_append_slide(..., notes=..., comment=...)`).
 - `generate_slide.py` -- CLI: instructions file -> local LLM -> validated

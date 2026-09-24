@@ -190,15 +190,72 @@ def _format_shape_presets() -> str:
     return "\n".join(f'  "{name}" -- {hint}' for name, hint in sorted(_VALID_SHAPE_PRESETS.items()))
 
 
+_NOTES_SPEC = """\
+### "notes" -- speaker notes (plain string)
+What the presenter says while this slide is shown -- NOT a copy of the
+slide's text. Explain the idea behind what's on the slide, add the
+context, examples, or a question to ask the audience that the slide
+itself leaves out, and end with a short transition when it fits.
+  - 3 to 6 short paragraphs, separated by a blank line ("\\n\\n").
+  - Plain text only: no markdown, no bullet symbols, no headings.
+  - Same language as the slide's own text (e.g. Spanish slide -> Spanish
+    notes)."""
+
+_COMMENT_SPEC = """\
+### "comment" -- animation plan (plain string)
+A short, numbered build order for the presenter to set up by hand as
+animations: which element appears when, and how. Refer to each element by
+its visible text (or, for an icon/shape without text, a short
+description), never by index or coordinates.
+  - One step per line, e.g. "1. Title: visible from the start."
+  - Use simple effects only: appear, fade, fly in, zoom, wipe -- on click
+    or with/after the previous step.
+  - Plain text only, same language as the slide's own text."""
+
+
+def _format_extras(want_notes: bool, want_comment: bool) -> str:
+    specs = [spec for want, spec in ((want_notes, _NOTES_SPEC), (want_comment, _COMMENT_SPEC)) if want]
+    return (
+        "## Speaker notes and comment\n\n"
+        "Besides \"elements\", also include these keys, each a JSON string:\n\n"
+        + "\n\n".join(specs)
+        + "\n"
+    )
+
+
 def build_system_prompt(
     theme: dict,
     icons_dir: str,
     slide_width_in: float = DEFAULT_SLIDE_WIDTH_IN,
     slide_height_in: float = DEFAULT_SLIDE_HEIGHT_IN,
+    want_notes: bool = False,
+    want_comment: bool = False,
 ) -> str:
     """Assemble the full system prompt from the element schema (static,
     hand-written) plus the live theme styles/colors and icons list (read
-    from `theme` and `icons_dir`)."""
+    from `theme` and `icons_dir`).
+
+    want_notes / want_comment additionally ask the model for a "notes"
+    (speaker notes) and/or "comment" (animation plan) string next to
+    "elements". Both default off, and when off the prompt is exactly what
+    it was before these existed -- so a small model that should only
+    handle the graphics isn't handed any extra instructions.
+    """
+    keys = ["elements"] + [k for k, want in (("notes", want_notes), ("comment", want_comment)) if want]
+    if len(keys) == 1:
+        keys_sentence = """The object has exactly
+one key, "elements", whose value is a JSON array of element objects (the
+schema is below)."""
+        checklist_keys = 'key "elements" only'
+        extras = ""
+    else:
+        quoted = ", ".join(f'"{k}"' for k in keys)
+        keys_sentence = f"""The object has exactly
+these keys: {quoted}. "elements" is a JSON array of element objects (the
+schema is below); the others are strings (see "Speaker notes and comment"
+below)."""
+        checklist_keys = f"keys {quoted}, nothing else"
+        extras = "\n" + _format_extras(want_notes, want_comment)
     example = {
         "elements": [
             {
@@ -234,9 +291,7 @@ description of ONE slide into the element definitions a Python library
 ## Output format (critical -- read carefully)
 
 Output ONLY a single JSON object -- nothing else. No markdown code fences,
-no explanation, no text before or after the JSON. The object has exactly
-one key, "elements", whose value is a JSON array of element objects (the
-schema is below). If your response contains anything other than that one
+no explanation, no text before or after the JSON. {keys_sentence} If your response contains anything other than that one
 JSON object, it cannot be used.
 
 ## Canvas
@@ -276,7 +331,7 @@ For any "image" element, set "icon" to one of these exact names (not
 "path") to place a predefined pictogram:
 
 {_format_icons(icons_dir)}
-
+{extras}
 ## Worked example
 
 A description like "two documents feed into a process box labeled
@@ -289,7 +344,7 @@ labels, and the arrow into the box, following the same pattern):
 
 ## Final checklist before you answer
 
-- Valid JSON, one top-level object, key "elements" only.
+- Valid JSON, one top-level object, {checklist_keys}.
 - Field names exactly as specified above (case-sensitive).
 - "line" uses x1/y1/x2/y2 -- every other type uses x/y/width/height.
 - Every number is a plain JSON number, not a quoted string.

@@ -1,0 +1,23 @@
+TITLE: "RELACIÓN UNO A MUCHOS (1:N)"
+
+Subtitle: "Un cliente realiza muchos pedidos; cada pedido pertenece a un solo cliente".
+
+The slide explains a one-to-many relationship in the entity relationship
+model, for first-semester database students. All slide text is in Spanish.
+
+In the middle of the slide, from left to right on the same horizontal line:
+- A rectangle for the entity "CLIENTE".
+- A diamond for the relationship "realiza".
+- A rectangle for the entity "PEDIDO".
+Connect them with plain lines (no arrows): CLIENTE to the diamond, and the
+diamond to PEDIDO. Put the cardinality label "1" just above the line next
+to CLIENTE, and "N" just above the line next to PEDIDO.
+
+Above CLIENTE, two attribute ovals connected to it with lines:
+"id_cliente" (the key attribute, in bold) and "nombre".
+Below PEDIDO, three attribute ovals connected to it with lines:
+"id_pedido" (the key attribute, in bold), "fecha" and "total".
+
+At the bottom of the slide, a full-width highlighted box with the text:
+"Regla práctica: la clave del lado 1 (id_cliente) viaja como clave foránea
+a la tabla del lado N (PEDIDO)."

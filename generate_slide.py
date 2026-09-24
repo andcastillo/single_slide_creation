@@ -49,6 +49,15 @@ Absent or empty sections add nothing. --no-notes / --no-comments ignore
 them for one run (e.g. to build a clean copy to share). Since sections
 never touch the LLM, edit them and re-run with --use-cache to apply the
 change without another LLM call.
+
+--llm-notes / --llm-comments instead ask the LLM to write the speaker
+notes / an animation-plan comment itself, in the same call that designs
+the slide -- but only for a section the instructions file doesn't have:
+a section you wrote always wins, and a present-but-empty one means "none
+for this slide". Meant for a larger model; without these flags the
+prompt is unchanged, so a small model only handles the graphics. What
+the LLM wrote is cached alongside the elements and replayed by
+--use-cache (with the same flags).
 """
 
 import argparse
@@ -60,7 +69,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from slidebuilder import add_slide, connect, get_page_size_in, load_theme, open_deck, save_deck
-from slidebuilder.llm import DEFAULT_BASE_URL, DEFAULT_MODEL, clamp_to_canvas, generate_elements, validate_elements
+from slidebuilder.llm import DEFAULT_BASE_URL, DEFAULT_MODEL, clamp_to_canvas, generate_response, text_field, validate_elements
 from slidebuilder.prompt import DEFAULT_SLIDE_HEIGHT_IN, DEFAULT_SLIDE_WIDTH_IN, build_system_prompt
 from slidebuilder.sections import COMMENT, SPEAKER_NOTES, parse_instructions
 
@@ -93,12 +102,16 @@ def main():
     parser.add_argument("--no-notes", action="store_true", help="Ignore the instructions file's '=== SPEAKER NOTES ===' section for this run (the slide gets no speaker notes)")
     parser.add_argument("--no-comments", action="store_true", help="Ignore the instructions file's '=== COMMENT ===' section for this run (the slide gets no comment)")
     parser.add_argument("--comment-author", default="slidebuilder", help="Author name shown on the slide comment (default: slidebuilder)")
+    parser.add_argument("--llm-notes", action="store_true", help="Ask the LLM to write the speaker notes, if the instructions file has no '=== SPEAKER NOTES ===' section (a section you wrote always wins; an empty one means no notes)")
+    parser.add_argument("--llm-comments", action="store_true", help="Ask the LLM to write an animation-plan comment, if the instructions file has no '=== COMMENT ===' section (same rules as --llm-notes)")
     args = parser.parse_args()
 
     # Every real LLM call's parsed element list is written here (same path
     # as the instructions file, with a .json extension) so it can be
     # inspected, hand-edited, and replayed via --use-cache without paying
-    # for another (slow, and for a cloud model, billed) LLM call.
+    # for another (slow, and for a cloud model, billed) LLM call. It's a
+    # bare JSON array of elements -- or, when the LLM was also asked for
+    # notes/comment, an object {"elements": [...], "notes": ..., "comment": ...}.
     cache_path = os.path.splitext(args.instructions_file)[0] + ".json"
 
     theme = load_theme(args.theme)
@@ -113,11 +126,6 @@ def main():
     # one case correctness actually depends on it.
     slide_width_in, slide_height_in = args.slide_width, args.slide_height
 
-    system_prompt = build_system_prompt(theme, args.icons_dir, slide_width_in, slide_height_in)
-    if args.show_prompt:
-        print(system_prompt)
-        return
-
     with open(args.instructions_file, "r", encoding="utf-8") as f:
         try:
             sections = parse_instructions(f.read())
@@ -130,6 +138,28 @@ def main():
         parser.error(f"{args.instructions_file} has no slide description (before any '=== ... ===' section)")
     notes = None if args.no_notes else sections[SPEAKER_NOTES]
     comment = None if args.no_comments else sections[COMMENT]
+
+    # The LLM is only asked for notes/comment the file doesn't already
+    # settle: a written section wins, and an empty one means "none".
+    want_notes = args.llm_notes and not args.no_notes and notes is None
+    want_comment = args.llm_comments and not args.no_comments and comment is None
+
+    def prompt_for(width_in, height_in):
+        return build_system_prompt(
+            theme, args.icons_dir, width_in, height_in,
+            want_notes=want_notes, want_comment=want_comment,
+        )
+
+    system_prompt = prompt_for(slide_width_in, slide_height_in)
+    if args.show_prompt:
+        print(system_prompt)
+        return
+
+    for flag, wanted, label in (("--llm-notes", args.llm_notes, SPEAKER_NOTES), ("--llm-comments", args.llm_comments, COMMENT)):
+        if wanted and sections[label] is not None:
+            kind = "a" if sections[label] else "an empty"
+            meaning = "using it" if sections[label] else "meaning none for this slide"
+            print(f"{flag}: the instructions file has {kind} '=== {label} ===' section -- {meaning}, not asking the LLM.")
 
     doc, is_new = None, None
     if not args.dry_run:
@@ -145,19 +175,24 @@ def main():
                 f"Appending to an existing deck -- using its actual page size "
                 f"({slide_width_in:.2f} x {slide_height_in:.2f}in), not --slide-width/--slide-height."
             )
-            system_prompt = build_system_prompt(theme, args.icons_dir, slide_width_in, slide_height_in)
+            system_prompt = prompt_for(slide_width_in, slide_height_in)
 
     if args.use_cache:
         if not os.path.isfile(cache_path):
             parser.error(f"--use-cache given but {cache_path} doesn't exist yet -- run once without it first")
         print(f"Using cached element list from {cache_path} (skipping the LLM).")
         with open(cache_path, "r", encoding="utf-8") as f:
-            elements = json.load(f)
+            response = json.load(f)
+        # Older caches (and any written without --llm-notes/--llm-comments)
+        # are a bare element list.
+        if isinstance(response, list):
+            response = {"elements": response}
+        elements = response.get("elements")
     else:
         print(f"Asking {args.model} at {args.base_url} to design the slide...")
         start = time.monotonic()
         try:
-            elements, raw = generate_elements(
+            response, raw = generate_response(
                 system_prompt,
                 instructions,
                 model=args.model,
@@ -172,9 +207,30 @@ def main():
             print(f"ERROR: {e}", file=sys.stderr)
             sys.exit(1)
         elapsed = time.monotonic() - start
+        elements = response["elements"]
+        extra_keys = [k for k, want in (("notes", want_notes), ("comment", want_comment)) if want and k in response]
+        cached = {"elements": elements, **{k: response[k] for k in extra_keys}} if extra_keys else elements
         with open(cache_path, "w", encoding="utf-8") as f:
-            json.dump(elements, f, indent=2, ensure_ascii=False)
-        print(f"Cached the LLM's element list to {cache_path}.")
+            json.dump(cached, f, indent=2, ensure_ascii=False)
+        print(f"Cached the LLM's response to {cache_path}.")
+
+    # LLM-written notes/comment: fresh from this call, or replayed from the
+    # cache. Missing or unusable ones are a warning, not an error -- the
+    # slide itself is still fine without them.
+    llm_written = set()
+    for key, wanted in (("notes", want_notes), ("comment", want_comment)):
+        if not wanted:
+            continue
+        text, problem = text_field(response, key)
+        if problem:
+            hint = " (re-run without --use-cache to generate it)" if args.use_cache else ""
+            print(f"WARNING: {problem}{hint}; the slide gets no {key}.", file=sys.stderr)
+            continue
+        llm_written.add(key)
+        if key == "notes":
+            notes = text
+        else:
+            comment = text
 
     problems = validate_elements(elements, icons_dir=args.icons_dir)
     if problems:
@@ -218,7 +274,11 @@ def main():
         notes=notes, comment=comment, comment_author=args.comment_author,
     )
     save_deck(doc, args.deck)
-    extras = [label for label, text in (("speaker notes", notes), ("a comment", comment)) if text]
+    extras = [
+        label + (" (written by the LLM)" if key in llm_written else "")
+        for key, label, text in (("notes", "speaker notes", notes), ("comment", "a comment", comment))
+        if text
+    ]
     with_extras = f" with {' and '.join(extras)}" if extras else ""
     print(f"Slide added{with_extras}. Saved to {args.deck} ({doc.DrawPages.Count} slide(s) total).")
 
