@@ -65,6 +65,15 @@ soffice --impress \
     --norestore --nologo
 ```
 
+On mac use
+
+```bash
+/Applications/LibreOffice.app/Contents/MacOS/soffice --impress \
+    -env:UserInstallation=file:///tmp/lo_automation_profile \
+    --accept="socket,host=localhost,port=2002;urp;" \
+    --norestore --nologo
+```
+
 Leave this running. It opens a visible LibreOffice window -- that's the
 window you'll watch/edit interactively.
 
@@ -382,6 +391,35 @@ export LLM_API_KEY="your-gemini-api-key"   # don't pass it as --api-key directly
     --base-url https://generativelanguage.googleapis.com/v1beta/openai \
     --model gemini-3.6-flash
 ```
+
+For MacOS you will need to resign the python that comes with LibreOffice to allow executing your scripts
+
+```bash
+# 1. Create a dedicated directory in your home folder
+mkdir -p "$HOME/libreoffice-python"
+
+# 2. Copy the Python resources and Frameworks out of the restricted app bundle
+cp -R /Applications/LibreOffice.app/Contents/Resources "$HOME/libreoffice-python/"
+cp -R /Applications/LibreOffice.app/Contents/Frameworks "$HOME/libreoffice-python/"
+
+# 3. Ad-hoc re-sign the Python application and framework to remove constraints
+codesign --force --deep --sign - "$HOME/libreoffice-python/Frameworks/LibreOfficePython.framework/Versions/Current/Resources/Python.app"
+codesign --force --deep --sign - "$HOME/libreoffice-python/Frameworks/LibreOfficePython.framework"
+
+# 4. Verify it works by importing uno
+$HOME/libreoffice-python/Resources/python -c 'import uno; print("UNO successfully loaded from:", uno.__file__)'
+```bash
+
+Now you can call the tool using:
+
+```bash
+$HOME/libreoffice-python/Resources/python generate_slide.py examples/sample_instructions_llm_notes.txt \
+    --deck examples/generated_deck.pptx \
+    --theme theme_brutalista.json \
+    --base-url http:192.168.19.8:1234/v1 \                              
+    --model qwen/qwen3.8-27b
+    --max-tokens 8000
+```bash
 
 (`--api-key` also exists directly, and takes priority over `LLM_API_KEY`
 if both are set, but the environment variable is the safer default.)

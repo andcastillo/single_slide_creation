@@ -8,7 +8,18 @@
     "dark": "#000000",
     "light": "#FFFFFF",
     "muted": "#666666",
+    "navy": "#0D274D",
+    "cyan": "#00BCEB",
+    "blue": "#0051AF",
+    "amber": "#FBAB2C",
+    "green": "#74BF4B",
     "background": "#FFFFFF",
+    "red": "#E3241B",
+    "purple": "#7030A0",
+    "grey_light": "#E2E2E2",
+    "grey_text": "#414244",
+    "white": "#FFFFFF",
+    "black": "#000000",
     "palette": ["#1F4E79", "#0D274D", "#70AD47", "#FF8200", "#A9A9A9"]
   },
 
@@ -22,6 +33,37 @@
       "line_color": null,
       "align": "center",
       "valign": "middle"
+    },
+    "title_banner": {
+      "font_family": "CiscoSansTT ExtraLight",
+      "font_size": 40,
+      "bold": false,
+      "font_color": "$white",
+      "fill_color": "$navy",
+      "line_color": null,
+      "align": "center",
+      "valign": "middle"
+    },
+     "card": {
+      "fill_color": "$white",
+      "line_color": "$cyan",
+      "line_width": 1.5
+    },
+    "card_title": {
+      "font_family": "CiscoSansTT Light",
+      "font_size": 16,
+      "bold": true,
+      "font_color": "$cyan",
+      "align": "left",
+      "valign": "top"
+    },
+    "card_body": {
+      "font_family": "CiscoSansTT Light",
+      "font_size": 14,
+      "bold": false,
+      "font_color": "$black",
+      "align": "left",
+      "valign": "top"
     },
     "subtitle": {
       "font_family": "Arial",
@@ -81,6 +123,12 @@
       "line_color": "$muted",
       "line_width": 1.5,
       "arrow_end": true
-    }
+    },
+    "badge_navy": { "fill_color": "$navy", "line_color": null },
+    "badge_cyan": { "fill_color": "$cyan", "line_color": null },
+    "badge_amber": { "fill_color": "$amber", "line_color": null },
+    "badge_green": { "fill_color": "$green", "line_color": null },
+    "badge_red": { "fill_color": "$red", "line_color": null },
+    "badge_purple": { "fill_color": "$purple", "line_color": null }
   }
 }

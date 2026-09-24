@@ -1,0 +1,192 @@
+[
+  {
+    "type": "rectangle",
+    "style": "title",
+    "x": 0.5,
+    "y": 0.3,
+    "width": 9.0,
+    "height": 0.7,
+    "text": "RELACIÓN UNO A MUCHOS (1:N)",
+    "align": "center"
+  },
+  {
+    "type": "text",
+    "style": "subtitle",
+    "x": 0.5,
+    "y": 1.05,
+    "width": 9.0,
+    "height": 0.4,
+    "text": "Un cliente realiza muchos pedidos; cada pedido pertenece a un solo cliente",
+    "align": "center"
+  },
+  {
+    "type": "oval",
+    "style": "card",
+    "x": 1.0,
+    "y": 1.7,
+    "width": 1.6,
+    "height": 0.6,
+    "text": "id_cliente",
+    "bold": true,
+    "align": "center"
+  },
+  {
+    "type": "oval",
+    "style": "card",
+    "x": 2.8,
+    "y": 1.7,
+    "width": 1.6,
+    "height": 0.6,
+    "text": "nombre",
+    "align": "center"
+  },
+  {
+    "type": "line",
+    "x1": 1.8,
+    "y1": 2.3,
+    "x2": 2.2,
+    "y2": 3.0
+  },
+  {
+    "type": "line",
+    "x1": 3.6,
+    "y1": 2.3,
+    "x2": 2.8,
+    "y2": 3.0
+  },
+  {
+    "type": "rectangle",
+    "style": "badge_navy",
+    "x": 1.5,
+    "y": 3.0,
+    "width": 2.0,
+    "height": 0.9,
+    "text": "CLIENTE",
+    "font_color": "$white",
+    "align": "center"
+  },
+  {
+    "type": "line",
+    "x1": 3.5,
+    "y1": 3.45,
+    "x2": 4.3,
+    "y2": 3.45
+  },
+  {
+    "type": "text",
+    "style": "caption",
+    "x": 3.5,
+    "y": 3.1,
+    "width": 0.8,
+    "height": 0.3,
+    "text": "1",
+    "align": "center",
+    "font_size": 16,
+    "bold": true
+  },
+  {
+    "type": "shape",
+    "preset": "diamond",
+    "style": "badge_cyan",
+    "x": 4.3,
+    "y": 3.0,
+    "width": 1.4,
+    "height": 0.9,
+    "text": "realiza",
+    "font_color": "$white",
+    "align": "center"
+  },
+  {
+    "type": "line",
+    "x1": 5.7,
+    "y1": 3.45,
+    "x2": 6.5,
+    "y2": 3.45
+  },
+  {
+    "type": "text",
+    "style": "caption",
+    "x": 5.7,
+    "y": 3.1,
+    "width": 0.8,
+    "height": 0.3,
+    "text": "N",
+    "align": "center",
+    "font_size": 16,
+    "bold": true
+  },
+  {
+    "type": "rectangle",
+    "style": "badge_navy",
+    "x": 6.5,
+    "y": 3.0,
+    "width": 2.0,
+    "height": 0.9,
+    "text": "PEDIDO",
+    "font_color": "$white",
+    "align": "center"
+  },
+  {
+    "type": "line",
+    "x1": 7.0,
+    "y1": 3.9,
+    "x2": 6.2,
+    "y2": 4.7
+  },
+  {
+    "type": "line",
+    "x1": 7.5,
+    "y1": 3.9,
+    "x2": 7.5,
+    "y2": 4.7
+  },
+  {
+    "type": "line",
+    "x1": 8.0,
+    "y1": 3.9,
+    "x2": 8.8,
+    "y2": 4.7
+  },
+  {
+    "type": "oval",
+    "style": "card",
+    "x": 5.4,
+    "y": 4.7,
+    "width": 1.6,
+    "height": 0.6,
+    "text": "id_pedido",
+    "bold": true,
+    "align": "center"
+  },
+  {
+    "type": "oval",
+    "style": "card",
+    "x": 6.7,
+    "y": 4.7,
+    "width": 1.6,
+    "height": 0.6,
+    "text": "fecha",
+    "align": "center"
+  },
+  {
+    "type": "oval",
+    "style": "card",
+    "x": 8.0,
+    "y": 4.7,
+    "width": 1.6,
+    "height": 0.6,
+    "text": "total",
+    "align": "center"
+  },
+  {
+    "type": "rectangle",
+    "style": "badge_amber",
+    "x": 0.5,
+    "y": 5.9,
+    "width": 9.0,
+    "height": 1.1,
+    "text": "Regla práctica: la clave del lado 1 (id_cliente) viaja como clave foránea a la tabla del lado N (PEDIDO).",
+    "font_color": "$white",
+    "align": "center"
+  }
+]
